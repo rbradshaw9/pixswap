@@ -37,9 +37,13 @@ class ApiService {
       },
       (error) => {
         if (error.response?.status === 401) {
-          // Clear token and redirect to login
+          // Clear all auth data
           localStorage.removeItem('token');
-          window.location.href = '/login';
+          localStorage.removeItem('auth-storage');
+          // Only redirect to login if not already on auth pages
+          if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }

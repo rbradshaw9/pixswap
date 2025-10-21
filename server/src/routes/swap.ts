@@ -23,8 +23,12 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       mediaUrl = mediaUrl.substring(mediaUrl.indexOf('uploads'));
     }
 
-    if (!mediaUrl) {
-      return res.status(400).json({ message: 'Media file is required' });
+    if (!mediaUrl || !req.file) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Media file is required',
+        timestamp: new Date(),
+      });
     }
 
     // Add user's content to pool
@@ -87,9 +91,13 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
         uploadedAt: receivedContent.timestamp,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Queue error:', error);
-    res.status(500).json({ message: 'Failed to process request' });
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to process swap',
+      timestamp: new Date(),
+    });
   }
 });
 
@@ -216,9 +224,13 @@ router.post('/next', upload.none(), async (req: any, res: any) => {
         uploadedAt: content.timestamp,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Next content error:', error);
-    res.status(500).json({ message: 'Failed to get next content' });
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to get next content',
+      timestamp: new Date(),
+    });
   }
 });
 
@@ -237,9 +249,13 @@ router.get('/my-uploads', protect, async (req: any, res: any) => {
       data: userContent,
       timestamp: new Date(),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get uploads error:', error);
-    res.status(500).json({ message: 'Failed to fetch uploads' });
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to fetch uploads',
+      timestamp: new Date(),
+    });
   }
 });
 
@@ -258,7 +274,11 @@ router.delete('/content/:contentId', protect, async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.error('Delete content error:', error);
-    res.status(500).json({ message: error.message || 'Failed to delete content' });
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to delete content',
+      timestamp: new Date(),
+    });
   }
 });
 
@@ -278,7 +298,11 @@ router.post('/content/:contentId/save', protect, async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.error('Save toggle error:', error);
-    res.status(500).json({ message: error.message || 'Failed to update save status' });
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to update save status',
+      timestamp: new Date(),
+    });
   }
 });
 
@@ -291,7 +315,19 @@ router.post('/content/:contentId/comment', protect, async (req: any, res: any) =
     const { text } = req.body;
 
     if (!text || text.trim().length === 0) {
-      return res.status(400).json({ message: 'Comment text is required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Comment text is required',
+        timestamp: new Date(),
+      });
+    }
+
+    if (text.trim().length > 500) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Comment cannot exceed 500 characters',
+        timestamp: new Date(),
+      });
     }
 
     const comment = await SwapComment.create({
@@ -314,7 +350,11 @@ router.post('/content/:contentId/comment', protect, async (req: any, res: any) =
     });
   } catch (error: any) {
     console.error('Add comment error:', error);
-    res.status(500).json({ message: error.message || 'Failed to add comment' });
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to add comment',
+      timestamp: new Date(),
+    });
   }
 });
 
@@ -366,7 +406,11 @@ router.post('/content/:contentId/like', protect, async (req: any, res: any) => {
     }
   } catch (error: any) {
     console.error('Add like error:', error);
-    res.status(500).json({ message: error.message || 'Failed to add like' });
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to add like',
+      timestamp: new Date(),
+    });
   }
 });
 
@@ -398,7 +442,11 @@ router.get('/content/:contentId/comments', async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.error('Get comments error:', error);
-    res.status(500).json({ message: error.message || 'Failed to fetch comments' });
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to fetch comments',
+      timestamp: new Date(),
+    });
   }
 });
 

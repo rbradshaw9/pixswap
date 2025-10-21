@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Image as ImageIcon, Video, Heart, MessageCircle, Eye, Trash2, Save, Clock, Sparkles, ArrowLeft, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 
 interface UploadedContent {
   id: string;
@@ -17,27 +18,18 @@ interface UploadedContent {
 
 export default function MyUploadsPage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const { user, isAuthenticated } = useAuthStore();
   const [uploads, setUploads] = useState<UploadedContent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user is logged in
-    const storedUser = localStorage.getItem('user');
-    if (!storedUser) {
+    if (!isAuthenticated) {
       navigate('/login');
       return;
     }
-
-    try {
-      setUser(JSON.parse(storedUser));
-      fetchMyUploads();
-    } catch (err) {
-      console.error('Failed to parse user:', err);
-      navigate('/login');
-    }
-  }, [navigate]);
+    fetchMyUploads();
+  }, [navigate, isAuthenticated]);
 
   const fetchMyUploads = async () => {
     setLoading(true);

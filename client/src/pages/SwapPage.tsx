@@ -3,13 +3,14 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap, LogIn, UserPlus, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 import * as nsfwjs from 'nsfwjs';
 import imageCompression from 'browser-image-compression';
 
 export default function SwapPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [user, setUser] = useState<any>(null);
+  const { user, isAuthenticated } = useAuthStore();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>('');
   const [fileType, setFileType] = useState<'image' | 'video'>('image');
@@ -26,18 +27,6 @@ export default function SwapPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get('debug') === 'true';
   });
-
-  // Check for logged in user
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        console.error('Failed to parse user:', err);
-      }
-    }
-  }, []);
 
   // Load NSFW model on mount (skip in production to avoid browser freeze)
   useEffect(() => {
@@ -363,7 +352,7 @@ export default function SwapPage() {
               </span>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-300">
-              {user ? (
+                              {isAuthenticated ? (
                 <>
                   <Link
                     to="/my-uploads"
@@ -374,7 +363,7 @@ export default function SwapPage() {
                   </Link>
                   <span className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    <span className="hidden sm:inline">{user.username}</span>
+                    <span className="hidden sm:inline">{user?.username || 'User'}</span>
                   </span>
                 </>
               ) : (

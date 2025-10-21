@@ -5,13 +5,16 @@ export class AuthService {
   async signup(data: SignupForm): Promise<AuthResponse> {
     const debug = new URLSearchParams(window.location.search).get('debug') === 'true';
     
+    // Remove confirmPassword before sending to backend
+    const { confirmPassword, ...signupData } = data;
+    
     if (debug) {
-      console.log('🔐 [DEBUG] Signup request:', { ...data, password: '[REDACTED]', confirmPassword: '[REDACTED]' });
+      console.log('🔐 [DEBUG] Signup request:', { ...signupData, password: '[REDACTED]' });
     } else {
-      console.log('🔐 Signup request:', { ...data, password: '[REDACTED]' });
+      console.log('🔐 Signup request:', { ...signupData, password: '[REDACTED]' });
     }
     
-    const response = await apiService.post<AuthResponse>('/auth/signup', data);
+    const response = await apiService.post<AuthResponse>('/auth/signup', signupData);
     
     if (debug) {
       console.log('🔐 [DEBUG] Signup response:', response);

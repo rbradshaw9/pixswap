@@ -367,51 +367,65 @@ class ContentPool {
 
   // Get all content for a specific user
   async getUserContent(userId: string): Promise<ContentEntry[]> {
-    // Get from in-memory pool
-    const memoryContent = Array.from(this.pool.values()).filter(
-      content => content.userId === userId
-    );
-    
-    // Also check database if enabled
-    if (this.useDatabase) {
-      try {
-        const dbContent = await Content.find({ userId }).sort({ uploadedAt: -1 }).lean();
-        
-        // Merge database content with memory, avoiding duplicates
-        const allContent = new Map<string, ContentEntry>();
-        
-        // Add memory content first (most up-to-date)
-        memoryContent.forEach(c => allContent.set(c.id, c));
-        
-        // Add database content if not already in memory
-        dbContent.forEach(doc => {
-          const id = doc._id.toString();
-          if (!allContent.has(id)) {
-            allContent.set(id, {
-              id,
-              userId: doc.userId,
-              username: doc.username,
-              mediaUrl: doc.mediaUrl,
-              mediaType: doc.mediaType,
-              isNSFW: doc.isNSFW,
-              timestamp: doc.uploadedAt.getTime(),
-              views: doc.views,
-              reactions: doc.reactions,
-              comments: doc.comments,
-              saveForever: doc.savedForever,
-            });
-          }
-        });
-        
-        return Array.from(allContent.values()).sort((a, b) => b.timestamp - a.timestamp);
-      } catch (error) {
-        console.error('Failed to fetch user content from database:', error);
-        // Fall back to memory content only
+    try {
+      console.log('📂 getUserContent called for userId:', userId);
+      
+      // Get from in-memory pool
+      const memoryContent = Array.from(this.pool.values()).filter(
+        content => content.userId === userId
+      );
+      
+      console.log('📂 Found', memoryContent.length, 'items in memory for user');
+      
+      // Also check database if enabled
+      if (this.useDatabase) {
+        try {
+          console.log('📂 Checking database for user content...');
+          const dbContent = await Content.find({ userId }).sort({ uploadedAt: -1 }).lean();
+          console.log('📂 Found', dbContent.length, 'items in database for user');
+          
+          // Merge database content with memory, avoiding duplicates
+          const allContent = new Map<string, ContentEntry>();
+          
+          // Add memory content first (most up-to-date)
+          memoryContent.forEach(c => allContent.set(c.id, c));
+          
+          // Add database content if not already in memory
+          dbContent.forEach(doc => {
+            const id = doc._id.toString();
+            if (!allContent.has(id)) {
+              allContent.set(id, {
+                id,
+                userId: doc.userId,
+                username: doc.username,
+                mediaUrl: doc.mediaUrl,
+                mediaType: doc.mediaType,
+                isNSFW: doc.isNSFW,
+                timestamp: doc.uploadedAt.getTime(),
+                views: doc.views,
+                reactions: doc.reactions,
+                comments: doc.comments,
+                saveForever: doc.savedForever,
+              });
+            }
+          });
+          
+          const result = Array.from(allContent.values()).sort((a, b) => b.timestamp - a.timestamp);
+          console.log('📂 Returning', result.length, 'total items for user');
+          return result;
+        } catch (error) {
+          console.error('Failed to fetch user content from database:', error);
+          // Fall back to memory content only
+        }
       }
+      
+      // Sort by most recent first
+      console.log('📂 Returning', memoryContent.length, 'items from memory only');
+      return memoryContent.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('getUserContent error:', error);
+      return []; // Return empty array on error instead of throwing
     }
-    
-    // Sort by most recent first
-    return memoryContent.sort((a, b) => b.timestamp - a.timestamp);
   }
 
   // Delete content (only owner can delete)

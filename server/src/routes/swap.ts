@@ -34,6 +34,7 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
     // Add user's content to pool
     const uploadedContent = await contentPool.add({
       userId,
+      username: req.user?.username,
       mediaUrl,
       mediaType: req.file.mimetype.startsWith('video') ? 'video' : 'image',
       isNSFW,

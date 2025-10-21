@@ -66,15 +66,34 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       });
     }
 
-    // If no content available from others, get any random content (even their own or latest)
+    // If no content available with filter, try without filter but exclude own content
     if (!receivedContent) {
-      // Try to get any content regardless of filter
-      receivedContent = await contentPool.getAny(isNSFW);
+      console.log('⚠️ No content with filter, trying any content except own...');
+      // Get any content that's not the user's own
+      const allContent = Array.from((contentPool as any).pool.values()).filter((c: any) => c.userId !== userId);
       
-      // If still nothing, return their own upload as content
-      if (!receivedContent) {
-        receivedContent = uploadedContent;
+      if (allContent.length > 0) {
+        const randomIndex = Math.floor(Math.random() * allContent.length);
+        receivedContent = allContent[randomIndex];
+        console.log('✓ Found alternative content:', receivedContent.id);
       }
+    }
+    
+    // If STILL no content (empty pool or only user's own content), return error
+    if (!receivedContent) {
+      console.log('❌ No content available for swap - pool is empty or only contains user\'s own content');
+      return res.status(503).json({
+        success: false,
+        message: 'No content available for swap yet. Please try again later or encourage others to upload!',
+        uploadedContent: {
+          id: uploadedContent.id,
+          mediaUrl: uploadedContent.mediaUrl,
+          mediaType: uploadedContent.mediaType,
+          caption: uploadedContent.caption,
+          isNSFW: uploadedContent.isNSFW,
+        },
+        timestamp: new Date(),
+      });
     }
 
     // Try to create swap record (optional if DB not connected)

@@ -79,7 +79,7 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
         const alternativeContent = allContent[randomIndex] as any;
         if (alternativeContent && alternativeContent.id) {
           receivedContent = alternativeContent;
-          console.log('✓ Found alternative content:', receivedContent.id);
+          console.log('✓ Found alternative content:', alternativeContent.id);
         }
       }
     }

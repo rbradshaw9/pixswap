@@ -125,13 +125,13 @@ export default function SwapViewPage() {
             <div className="bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 overflow-hidden shadow-2xl">
               {content.mediaType === 'video' ? (
                 <video
-                  src={`http://localhost:5000/${content.mediaUrl}`}
+                  src={content.mediaUrl.startsWith('http') ? content.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${content.mediaUrl}`}
                   controls
                   className="w-full max-h-[70vh] object-contain bg-black"
                 />
               ) : (
                 <img
-                  src={`http://localhost:5000/${content.mediaUrl}`}
+                  src={content.mediaUrl.startsWith('http') ? content.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${content.mediaUrl}`}
                   alt="Swapped content"
                   className="w-full max-h-[70vh] object-contain bg-black"
                 />

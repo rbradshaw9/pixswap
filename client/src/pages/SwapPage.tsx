@@ -26,8 +26,13 @@ export default function SwapPage() {
     return params.get('debug') === 'true';
   });
 
-  // Load NSFW model on mount
+  // Load NSFW model on mount (skip in production to avoid browser freeze)
   useEffect(() => {
+    if (import.meta.env.PROD) {
+      console.log('NSFW model loading skipped in production');
+      return;
+    }
+    
     const loadModel = async () => {
       try {
         const model = await nsfwjs.load();
@@ -187,17 +192,34 @@ export default function SwapPage() {
         // Compress image
         setCompressionProgress(20);
         
+        if (debugMode) console.log('[DEBUG] Starting image compression', { originalSize: file.size });
+        
         const options = {
           maxSizeMB: 0.5, // 500KB max
           maxWidthOrHeight: 2048, // Max dimension
           useWebWorker: true,
+          maxIteration: 10, // Limit iterations
           onProgress: (progress: number) => {
+            if (debugMode) console.log('[DEBUG] Compression progress:', progress);
             setCompressionProgress(20 + progress * 0.6); // 20-80%
           },
         };
 
-        processedFile = await imageCompression(file, options);
-        setCompressionProgress(80);
+        try {
+          processedFile = await imageCompression(file, options);
+          if (debugMode) console.log('[DEBUG] Compression complete', { newSize: processedFile.size });
+          setCompressionProgress(80);
+        } catch (compressionErr) {
+          console.error('[DEBUG] Compression failed, using original file:', compressionErr);
+          // If compression fails, use original file if it's under 5MB
+          if (file.size > 5 * 1024 * 1024) {
+            setError('Image is too large and compression failed. Please select a smaller image.');
+            setIsCompressing(false);
+            return;
+          }
+          processedFile = file;
+          setCompressionProgress(80);
+        }
 
         // Analyze compressed image
         const reader = new FileReader();

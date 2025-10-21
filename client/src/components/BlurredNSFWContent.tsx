@@ -21,7 +21,7 @@ export default function BlurredNSFWContent({ children, isNSFW, className = '' }:
   return (
     <div className={`relative ${className}`}>
       {/* Content with conditional blur */}
-      <div className={isRevealed ? '' : 'blur-3xl select-none pointer-events-none'}>
+      <div className={isRevealed ? '' : 'blur-xl select-none pointer-events-none'}>
         {children}
       </div>
 
@@ -37,7 +37,10 @@ export default function BlurredNSFWContent({ children, isNSFW, className = '' }:
               This content has been marked as Not Safe For Work. Click to reveal.
             </p>
             <button
-              onClick={() => setIsRevealed(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsRevealed(true);
+              }}
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold transition-all flex items-center gap-2 mx-auto shadow-lg hover:shadow-xl"
             >
               <Eye className="w-5 h-5" />
@@ -50,7 +53,10 @@ export default function BlurredNSFWContent({ children, isNSFW, className = '' }:
       {/* Hide button when revealed */}
       {isRevealed && (
         <button
-          onClick={() => setIsRevealed(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsRevealed(false);
+          }}
           className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-black/70 hover:bg-black/90 text-white text-sm font-medium transition-all flex items-center gap-2 backdrop-blur-sm border border-white/20"
         >
           <EyeOff className="w-4 h-4" />

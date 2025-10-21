@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle } from 'lucide-react';
+import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
+import * as nsfwjs from 'nsfwjs';
 
 export default function SwapPage() {
   const navigate = useNavigate();
@@ -12,8 +13,59 @@ export default function SwapPage() {
   const [isNSFW, setIsNSFW] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const [nsfwModel, setNsfwModel] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [nsfwDetected, setNsfwDetected] = useState(false);
+  const [nsfwPredictions, setNsfwPredictions] = useState<any>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Load NSFW model on mount
+  useEffect(() => {
+    const loadModel = async () => {
+      try {
+        const model = await nsfwjs.load();
+        setNsfwModel(model);
+      } catch (err) {
+        console.error('Failed to load NSFW model:', err);
+      }
+    };
+    loadModel();
+  }, []);
+
+  const analyzeImage = async (imageSrc: string) => {
+    if (!nsfwModel) return;
+
+    setIsAnalyzing(true);
+    try {
+      const img = new Image();
+      img.src = imageSrc;
+      
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      const predictions = await nsfwModel.classify(img);
+      setNsfwPredictions(predictions);
+      
+      // Check for NSFW content (Porn, Hentai, Sexy)
+      const nsfwContent = predictions.find((p: any) => 
+        (p.className === 'Porn' || p.className === 'Hentai' || p.className === 'Sexy') && p.probability > 0.5
+      );
+
+      if (nsfwContent && !isNSFW) {
+        setNsfwDetected(true);
+        setError('NSFW content detected! Please enable NSFW mode to upload this image.');
+      } else {
+        setNsfwDetected(false);
+        setError('');
+      }
+    } catch (err) {
+      console.error('Failed to analyze image:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -29,16 +81,27 @@ export default function SwapPage() {
 
     setSelectedFile(file);
     setError('');
+    setNsfwDetected(false);
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
+    reader.onloadend = async () => {
+      const imageSrc = reader.result as string;
+      setPreview(imageSrc);
+      
+      // Analyze image for NSFW content
+      await analyzeImage(imageSrc);
     };
     reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
     if (!selectedFile) return;
+
+    // Block upload if NSFW detected and filter not enabled
+    if (nsfwDetected && !isNSFW) {
+      setError('Please enable NSFW mode to upload this image, or choose a different photo.');
+      return;
+    }
 
     setIsUploading(true);
     setError('');
@@ -61,6 +124,13 @@ export default function SwapPage() {
       setIsUploading(false);
     }
   };
+
+  // Re-analyze when NSFW toggle changes
+  useEffect(() => {
+    if (preview) {
+      analyzeImage(preview);
+    }
+  }, [isNSFW]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900">
@@ -276,20 +346,61 @@ export default function SwapPage() {
                 className="hidden"
               />
 
+              {isAnalyzing && (
+                <div className="mt-6 flex items-center gap-3 p-5 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-blue-200 backdrop-blur-sm">
+                  <ScanEye className="w-6 h-6 flex-shrink-0 animate-pulse" />
+                  <p className="font-medium">Analyzing image content...</p>
+                </div>
+              )}
+
               {error && (
                 <div className="mt-6 flex items-center gap-3 p-5 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-200 backdrop-blur-sm">
                   <AlertCircle className="w-6 h-6 flex-shrink-0" />
-                  <p className="font-medium">{error}</p>
+                  <div>
+                    <p className="font-medium">{error}</p>
+                    {nsfwDetected && (
+                      <button
+                        onClick={() => setIsNSFW(true)}
+                        className="mt-2 text-sm underline hover:text-orange-300 transition-colors"
+                      >
+                        Enable NSFW mode
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {nsfwPredictions && !error && preview && (
+                <div className="mt-6 p-4 bg-black/20 border border-white/10 rounded-2xl backdrop-blur-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-4 h-4 text-green-400" />
+                    <p className="text-sm font-medium text-white">Content Analysis Complete</p>
+                  </div>
+                  <div className="text-xs text-gray-400 space-y-1">
+                    {nsfwPredictions.map((pred: any) => (
+                      <div key={pred.className} className="flex justify-between">
+                        <span>{pred.className}:</span>
+                        <span className={pred.probability > 0.5 ? 'text-orange-400 font-semibold' : ''}>
+                          {(pred.probability * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
               <Button
                 onClick={handleSubmit}
-                disabled={!selectedFile || isUploading}
+                disabled={!selectedFile || isUploading || isAnalyzing || (nsfwDetected && !isNSFW)}
                 className="w-full h-16 text-lg font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 text-white rounded-2xl shadow-2xl shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-300 mt-8 group"
                 size="lg"
               >
-                {isUploading ? (
+                {isAnalyzing ? (
+                  <>
+                    <ScanEye className="w-6 h-6 mr-3 animate-pulse" />
+                    Analyzing content...
+                  </>
+                ) : isUploading ? (
                   <>
                     <div className="loading-spinner mr-3" />
                     Finding your match...

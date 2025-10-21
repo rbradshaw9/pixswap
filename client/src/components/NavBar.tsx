@@ -113,10 +113,13 @@ export default function NavBar({
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
               <>
-                <div className={`hidden sm:flex items-center gap-2 ${textClasses}`}>
+                <Link 
+                  to={`/profile/${user?.username}`}
+                  className={`hidden sm:flex items-center gap-2 ${textClasses} hover:underline transition-colors`}
+                >
                   <Users className="w-4 h-4" />
                   <span className="font-medium">{user?.displayName || user?.username}</span>
-                </div>
+                </Link>
                 <button
                   onClick={() => logout()}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl ${buttonClasses} transition-all`}

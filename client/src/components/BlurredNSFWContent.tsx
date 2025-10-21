@@ -21,7 +21,7 @@ export default function BlurredNSFWContent({ children, isNSFW, className = '' }:
   return (
     <div className={`relative ${className}`}>
       {/* Content with conditional blur */}
-      <div className={isRevealed ? '' : 'blur-xl select-none pointer-events-none'}>
+      <div className={isRevealed ? '' : 'blur-md select-none pointer-events-none'}>
         {children}
       </div>
 

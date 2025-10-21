@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/Input';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import ProtectedMedia from '@/components/ProtectedMedia';
+import BlurredNSFWContent from '@/components/BlurredNSFWContent';
 import { debug } from '@/lib/debug';
 
 interface User {
@@ -593,13 +594,15 @@ const AdminPage = () => {
                   {media.map((item) => (
                     <div key={item._id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-xl transition-shadow">
                       <div className="relative aspect-square bg-gray-100">
-                        <ProtectedMedia
-                          mediaUrl={item.mediaUrl.startsWith('http') ? item.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${item.mediaUrl}`}
-                          mediaType={item.mediaType}
-                          alt={item.caption || 'Content'}
-                          className="w-full h-full object-cover"
-                          showWatermark={false}
-                        />
+                        <BlurredNSFWContent isNSFW={item.isNSFW}>
+                          <ProtectedMedia
+                            mediaUrl={item.mediaUrl.startsWith('http') ? item.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${item.mediaUrl}`}
+                            mediaType={item.mediaType}
+                            alt={item.caption || 'Content'}
+                            className="w-full h-full object-cover"
+                            showWatermark={false}
+                          />
+                        </BlurredNSFWContent>
                         <div className="absolute top-2 right-2 flex gap-2">
                           {item.isNSFW && (
                             <span className="px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">

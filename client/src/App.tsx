@@ -14,6 +14,7 @@ import MyUploadsPage from '@/pages/MyUploadsPage';
 import LikedPostsPage from '@/pages/LikedPostsPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AdminPage from '@/pages/AdminPage';
+import ProfilePage from '@/pages/ProfilePage';
 
 // Components
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -44,6 +45,7 @@ function App() {
           <Route path="/my-uploads" element={<MyUploadsPage />} />
           <Route path="/liked-posts" element={<LikedPostsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/swap/:swapId" element={<SwapChatPage />} />
           <Route path="/admin" element={<AdminPage />} />
           

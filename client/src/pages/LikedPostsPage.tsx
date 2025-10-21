@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import ProtectedMedia from '@/components/ProtectedMedia';
+import BlurredNSFWContent from '@/components/BlurredNSFWContent';
 
 interface LikedContent {
   id: string;
@@ -132,12 +133,14 @@ export default function LikedPostsPage() {
               >
                 {/* Media Preview */}
                 <div className="relative aspect-square bg-black/50">
-                  <ProtectedMedia
-                    mediaUrl={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${post.mediaUrl}`}
-                    mediaType={post.mediaType}
-                    username={post.username}
-                    className="w-full h-full object-cover"
-                  />
+                  <BlurredNSFWContent isNSFW={post.isNSFW}>
+                    <ProtectedMedia
+                      mediaUrl={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${post.mediaUrl}`}
+                      mediaType={post.mediaType}
+                      username={post.username}
+                      className="w-full h-full object-cover"
+                    />
+                  </BlurredNSFWContent>
                   
                   {/* Media Type Badge */}
                   <div className="absolute top-3 left-3">

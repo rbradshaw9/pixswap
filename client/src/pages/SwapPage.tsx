@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap, LogIn, UserPlus } from 'lucide-react';
+import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap, LogIn, UserPlus, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import * as nsfwjs from 'nsfwjs';
@@ -364,10 +364,19 @@ export default function SwapPage() {
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-300">
               {user ? (
-                <span className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span className="hidden sm:inline">{user.username}</span>
-                </span>
+                <>
+                  <Link
+                    to="/my-uploads"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    <span className="hidden sm:inline">My Uploads</span>
+                  </Link>
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span className="hidden sm:inline">{user.username}</span>
+                  </span>
+                </>
               ) : (
                 <>
                   <Link

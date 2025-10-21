@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { upload } from '@/middleware/upload';
-import { optionalAuth } from '@/middleware/auth';
+import { optionalAuth, protect } from '@/middleware/auth';
 import { Swap } from '@/models';
 import { SwapStatus } from '@/types';
 import { contentPool } from '@/services/contentPool';
@@ -219,6 +219,62 @@ router.post('/next', upload.none(), async (req: any, res: any) => {
   } catch (error) {
     console.error('Next content error:', error);
     res.status(500).json({ message: 'Failed to get next content' });
+  }
+});
+
+// Get user's uploads (requires auth)
+router.get('/my-uploads', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    const userContent = await contentPool.getUserContent(userId);
+
+    res.json({
+      success: true,
+      data: userContent,
+      timestamp: new Date(),
+    });
+  } catch (error) {
+    console.error('Get uploads error:', error);
+    res.status(500).json({ message: 'Failed to fetch uploads' });
+  }
+});
+
+// Delete content (requires auth)
+router.delete('/content/:contentId', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    const { contentId } = req.params;
+
+    await contentPool.deleteContent(contentId, userId);
+
+    res.json({
+      success: true,
+      message: 'Content deleted successfully',
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Delete content error:', error);
+    res.status(500).json({ message: error.message || 'Failed to delete content' });
+  }
+});
+
+// Toggle save forever (requires auth)
+router.post('/content/:contentId/save', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    const { contentId } = req.params;
+    const { saveForever } = req.body;
+
+    await contentPool.setSaveForever(contentId, userId, saveForever);
+
+    res.json({
+      success: true,
+      message: saveForever ? 'Content saved forever' : 'Auto-delete re-enabled',
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Save toggle error:', error);
+    res.status(500).json({ message: error.message || 'Failed to update save status' });
   }
 });
 

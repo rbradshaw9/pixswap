@@ -10,6 +10,8 @@ interface ContentEntry {
   timestamp: number;
   views: number;
   reactions: number;
+  comments?: number;
+  saveForever?: boolean;
 }
 
 class ContentPool {
@@ -25,6 +27,7 @@ class ContentPool {
       ...entry,
       views: 0,
       reactions: 0,
+      comments: 0,
     };
 
     this.pool.set(id, content);
@@ -125,12 +128,62 @@ class ContentPool {
     };
   }
 
+  // Get all content for a specific user
+  async getUserContent(userId: string): Promise<ContentEntry[]> {
+    const userContent = Array.from(this.pool.values()).filter(
+      content => content.userId === userId
+    );
+    
+    // Sort by most recent first
+    return userContent.sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  // Delete content (only owner can delete)
+  async deleteContent(contentId: string, userId: string): Promise<void> {
+    const content = this.pool.get(contentId);
+    
+    if (!content) {
+      throw new Error('Content not found');
+    }
+    
+    if (content.userId !== userId) {
+      throw new Error('Unauthorized to delete this content');
+    }
+    
+    this.pool.delete(contentId);
+    
+    // Clean up from user seen lists
+    for (const seenSet of this.userContent.values()) {
+      seenSet.delete(contentId);
+    }
+  }
+
+  // Set save forever status (only owner can modify)
+  async setSaveForever(contentId: string, userId: string, saveForever: boolean): Promise<void> {
+    const content = this.pool.get(contentId);
+    
+    if (!content) {
+      throw new Error('Content not found');
+    }
+    
+    if (content.userId !== userId) {
+      throw new Error('Unauthorized to modify this content');
+    }
+    
+    content.saveForever = saveForever;
+  }
+
   // Clean up old content (>24 hours)
   cleanup() {
     const now = Date.now();
     const twentyFourHours = 24 * 60 * 60 * 1000;
 
     for (const [id, content] of this.pool.entries()) {
+      // Skip content marked to save forever
+      if (content.saveForever) {
+        continue;
+      }
+      
       if (now - content.timestamp > twentyFourHours) {
         this.pool.delete(id);
         

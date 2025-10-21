@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, SkipForward, UserPlus, ArrowLeft, Sparkles, Send, LogOut } from 'lucide-react';
+import { Heart, MessageCircle, Share2, SkipForward, UserPlus, ArrowLeft, Sparkles, Send, LogOut, Flag } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
@@ -73,6 +73,24 @@ export default function SwapViewPage() {
   };
 
   // Removed non-functional reaction feature for v1
+
+  const handleFlag = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to flag content');
+      return;
+    }
+
+    if (!confirm('Flag this content as inappropriate or miscategorized?')) return;
+
+    try {
+      await api.post(`/swap/content/${content.id}/flag`, {
+        reason: 'User reported as inappropriate or miscategorized NSFW',
+      });
+      toast.success('Content flagged for review');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to flag content');
+    }
+  };
 
   const handleShare = async () => {
     if (!content) return;
@@ -298,6 +316,15 @@ export default function SwapViewPage() {
                     >
                       <Share2 className="w-5 h-5" />
                       <span className="font-medium hidden sm:inline">Share</span>
+                    </button>
+
+                    <button 
+                      onClick={handleFlag}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 transition-all"
+                      title="Flag as inappropriate"
+                    >
+                      <Flag className="w-5 h-5" />
+                      <span className="font-medium hidden sm:inline">Flag</span>
                     </button>
                   </div>
 

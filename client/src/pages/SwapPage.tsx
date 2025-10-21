@@ -45,6 +45,15 @@ export default function SwapPage() {
     loadModel();
   }, []);
 
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (preview && preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
+
   // Extract frame from video for NSFW analysis
   const extractVideoFrame = async (videoFile: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -110,16 +119,18 @@ export default function SwapPage() {
       
       if (debugMode) console.log('[DEBUG] NSFW predictions:', predictions);
       
-      // Check for NSFW content with 0.6 threshold (Porn, Hentai, Sexy)
-      // Using 0.6 instead of 0.5 to reduce false positives
+      // Check for NSFW content with 0.4 threshold for better detection
+      // Checks: Porn, Hentai, Sexy (exposed body parts, suggestive poses)
       const nsfwContent = predictions.find((p: any) => 
-        (p.className === 'Porn' || p.className === 'Hentai' || p.className === 'Sexy') && p.probability > 0.6
+        (p.className === 'Porn' || p.className === 'Hentai' || p.className === 'Sexy') && p.probability > 0.4
       );
 
       if (nsfwContent) {
+        console.log('🔞 NSFW content detected:', nsfwContent);
         setNsfwDetected(true);
         setError(`NSFW content detected (${nsfwContent.className}: ${Math.round(nsfwContent.probability * 100)}%). Please enable NSFW mode to upload this content.`);
       } else {
+        console.log('✅ Content passed NSFW check');
         setNsfwDetected(false);
         setError('');
       }
@@ -189,13 +200,15 @@ export default function SwapPage() {
           console.warn('Could not analyze video frame:', err);
         }
 
-        // Note: Video compression would happen here in production
-        // For now, we'll accept videos as-is but with size limit
-        if (file.size > 100 * 1024 * 1024) { // 100MB limit for now
-          setError('Video is too large. Please select a smaller file (under 100MB).');
+        // Check video size (100MB limit)
+        const sizeMB = file.size / (1024 * 1024);
+        if (sizeMB > 100) {
+          setError(`Video is too large (${sizeMB.toFixed(1)}MB). Please select a video under 100MB. Try reducing quality or duration.`);
           setIsCompressing(false);
           return;
         }
+        
+        console.log(`📹 Video accepted: ${sizeMB.toFixed(1)}MB, ${videoDuration.toFixed(1)}s`);
 
         setCompressionProgress(100);
       } else if (isImage) {
@@ -245,12 +258,20 @@ export default function SwapPage() {
       setSelectedFile(processedFile);
       setFileType(isVideo ? 'video' : 'image');
 
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(processedFile);
+      // Create preview (use blob URL for videos to avoid memory issues)
+      if (isVideo) {
+        // Revoke previous blob URL if it exists
+        if (preview && preview.startsWith('blob:')) {
+          URL.revokeObjectURL(preview);
+        }
+        setPreview(URL.createObjectURL(processedFile));
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreview(reader.result as string);
+        };
+        reader.readAsDataURL(processedFile);
+      }
 
     } catch (err: any) {
       console.error('File processing error:', err);

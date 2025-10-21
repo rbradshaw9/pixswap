@@ -17,6 +17,9 @@ interface LikedContent {
   isNSFW: boolean;
   likedAt: number;
   comments: number;
+  reactions: number;
+  userId?: string;
+  caption?: string;
 }
 
 export default function LikedPostsPage() {
@@ -54,6 +57,16 @@ export default function LikedPostsPage() {
       setError(err.response?.data?.message || 'Failed to load liked posts');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUnlike = async (e: React.MouseEvent, contentId: string) => {
+    e.stopPropagation();
+    try {
+      await api.post(`/swap/content/${contentId}/like`);
+      setLikedPosts(likedPosts.filter(p => p.id !== contentId));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to unlike content');
     }
   };
 
@@ -161,14 +174,21 @@ export default function LikedPostsPage() {
                   <p className="text-white font-medium mb-3">@{post.username}</p>
 
                   {/* Stats */}
-                  <div className="flex items-center gap-4 text-sm text-gray-300 mb-4">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-4 h-4" />
-                      {post.views}
-                    </span>
-                    <span className="flex items-center gap-1">
+                  <div className="flex items-center gap-4 text-sm mb-4">
+                    <button
+                      onClick={(e) => handleUnlike(e, post.id)}
+                      className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      <Heart className="w-4 h-4 fill-current" />
+                      {post.reactions}
+                    </button>
+                    <span className="flex items-center gap-1 text-gray-300">
                       <MessageCircle className="w-4 h-4" />
                       {post.comments}
+                    </span>
+                    <span className="flex items-center gap-1 text-gray-300">
+                      <Eye className="w-4 h-4" />
+                      {post.views}
                     </span>
                   </div>
 

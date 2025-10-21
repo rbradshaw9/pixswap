@@ -13,6 +13,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@tensorflow/tfjs": "^4.22.0",
     "axios": "^1.12.2",
+    "browser-image-compression": "^2.0.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.546.0",

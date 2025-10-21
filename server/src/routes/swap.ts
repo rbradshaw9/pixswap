@@ -89,8 +89,11 @@ router.get('/:id', async (req: any, res: any) => {
     }
 
     // Get content details for both participants
-    const participant1Content = await contentPool.getById(swap.participants[0].mediaSubmitted);
-    const participant2Content = await contentPool.getById(swap.participants[1].mediaSubmitted);
+    const participant1Id = swap.participants[0]?.mediaSubmitted;
+    const participant2Id = swap.participants[1]?.mediaSubmitted;
+    
+    const participant1Content = participant1Id ? await contentPool.getById(participant1Id.toString()) : null;
+    const participant2Content = participant2Id ? await contentPool.getById(participant2Id.toString()) : null;
 
     res.json({
       success: true,
@@ -123,9 +126,9 @@ router.post('/:id/react', async (req: any, res: any) => {
 
     // Store reaction
     if (!swap.metadata) swap.metadata = {};
-    if (!swap.metadata.reactions) swap.metadata.reactions = [];
+    if (!(swap.metadata as any).reactions) (swap.metadata as any).reactions = [];
     
-    swap.metadata.reactions.push({
+    (swap.metadata as any).reactions.push({
       userId,
       reaction,
       comment,

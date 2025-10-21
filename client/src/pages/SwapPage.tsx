@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye } from 'lucide-react';
+import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import * as nsfwjs from 'nsfwjs';
+import imageCompression from 'browser-image-compression';
 
 export default function SwapPage() {
   const navigate = useNavigate();
@@ -18,6 +19,8 @@ export default function SwapPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [nsfwDetected, setNsfwDetected] = useState(false);
   const [nsfwPredictions, setNsfwPredictions] = useState<any>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0);
 
   // Load NSFW model on mount
   useEffect(() => {
@@ -31,6 +34,41 @@ export default function SwapPage() {
     };
     loadModel();
   }, []);
+
+  // Extract frame from video for NSFW analysis
+  const extractVideoFrame = async (videoFile: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+
+      video.onloadedmetadata = () => {
+        // Seek to 10% into the video for analysis
+        video.currentTime = Math.min(video.duration * 0.1, 5);
+      };
+
+      video.onseeked = () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx?.drawImage(video, 0, 0);
+        
+        const frameData = canvas.toDataURL('image/jpeg', 0.8);
+        URL.revokeObjectURL(video.src);
+        resolve(frameData);
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        reject(new Error('Failed to load video'));
+      };
+
+      video.src = URL.createObjectURL(videoFile);
+    });
+  };
 
   const analyzeImage = async (imageSrc: string) => {
     if (!nsfwModel) return;
@@ -54,7 +92,7 @@ export default function SwapPage() {
 
       if (nsfwContent && !isNSFW) {
         setNsfwDetected(true);
-        setError('NSFW content detected! Please enable NSFW mode to upload this image.');
+        setError('NSFW content detected! Please enable NSFW mode to upload this content.');
       } else {
         setNsfwDetected(false);
         setError('');
@@ -78,47 +116,101 @@ export default function SwapPage() {
       return;
     }
 
-    // 5GB limit for videos, 10MB for images
-    const maxSize = isVideo ? 5 * 1024 * 1024 * 1024 : 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError(isVideo ? 'Video must be less than 5GB' : 'Image must be less than 10MB');
-      return;
-    }
-
-    // 2 minute limit for videos
-    if (isVideo) {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      
-      video.onloadedmetadata = function() {
-        window.URL.revokeObjectURL(video.src);
-        if (video.duration > 120) {
-          setError('Video must be less than 2 minutes');
-          setSelectedFile(null);
-          setPreview('');
-          return;
-        }
-      };
-      
-      video.src = URL.createObjectURL(file);
-    }
-
-    setSelectedFile(file);
-    setFileType(isVideo ? 'video' : 'image');
     setError('');
     setNsfwDetected(false);
+    setIsCompressing(true);
+    setCompressionProgress(0);
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const fileSrc = reader.result as string;
-      setPreview(fileSrc);
-      
-      // Only analyze images for NSFW content
-      if (isImage) {
-        await analyzeImage(fileSrc);
+    try {
+      let processedFile = file;
+
+      if (isVideo) {
+        // Check video duration
+        const videoDuration = await new Promise<number>((resolve, reject) => {
+          const video = document.createElement('video');
+          video.preload = 'metadata';
+          
+          video.onloadedmetadata = function() {
+            window.URL.revokeObjectURL(video.src);
+            resolve(video.duration);
+          };
+          
+          video.onerror = () => {
+            window.URL.revokeObjectURL(video.src);
+            reject(new Error('Failed to load video'));
+          };
+          
+          video.src = URL.createObjectURL(file);
+        });
+
+        if (videoDuration > 120) {
+          setError('Video must be less than 2 minutes');
+          setIsCompressing(false);
+          return;
+        }
+
+        // Extract frame and analyze for NSFW
+        setCompressionProgress(30);
+        try {
+          const frameData = await extractVideoFrame(file);
+          await analyzeImage(frameData);
+        } catch (err) {
+          console.warn('Could not analyze video frame:', err);
+        }
+
+        // Note: Video compression would happen here in production
+        // For now, we'll accept videos as-is but with size limit
+        if (file.size > 100 * 1024 * 1024) { // 100MB limit for now
+          setError('Video is too large. Please select a smaller file (under 100MB).');
+          setIsCompressing(false);
+          return;
+        }
+
+        setCompressionProgress(100);
+      } else if (isImage) {
+        // Compress image
+        setCompressionProgress(20);
+        
+        const options = {
+          maxSizeMB: 0.5, // 500KB max
+          maxWidthOrHeight: 2048, // Max dimension
+          useWebWorker: true,
+          onProgress: (progress: number) => {
+            setCompressionProgress(20 + progress * 0.6); // 20-80%
+          },
+        };
+
+        processedFile = await imageCompression(file, options);
+        setCompressionProgress(80);
+
+        // Analyze compressed image
+        const reader = new FileReader();
+        const imageData = await new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(processedFile);
+        });
+
+        await analyzeImage(imageData);
+        setCompressionProgress(100);
       }
-    };
-    reader.readAsDataURL(file);
+
+      setSelectedFile(processedFile);
+      setFileType(isVideo ? 'video' : 'image');
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(processedFile);
+
+    } catch (err: any) {
+      console.error('File processing error:', err);
+      setError(err.message || 'Failed to process file');
+    } finally {
+      setIsCompressing(false);
+      setCompressionProgress(0);
+    }
   };
 
   const handleSubmit = async () => {
@@ -339,7 +431,7 @@ export default function SwapPage() {
                       Click or drag to upload
                     </p>
                     <p className="text-sm text-gray-400">
-                      Images up to 10MB • Videos up to 5GB (2min max)
+                      Images auto-compressed • Videos up to 100MB (2min max)
                     </p>
                   </div>
                 </div>
@@ -398,10 +490,28 @@ export default function SwapPage() {
                 className="hidden"
               />
 
-              {isAnalyzing && fileType === 'image' && (
+              {isCompressing && (
+                <div className="mt-6 p-5 bg-blue-500/10 border border-blue-500/30 rounded-2xl backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Zap className="w-6 h-6 text-blue-400 animate-pulse" />
+                    <p className="font-medium text-blue-200">
+                      {fileType === 'video' ? 'Processing video...' : 'Compressing image...'}
+                    </p>
+                    <span className="ml-auto text-blue-300 font-semibold">{compressionProgress}%</span>
+                  </div>
+                  <div className="w-full bg-black/20 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${compressionProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {isAnalyzing && !isCompressing && (
                 <div className="mt-6 flex items-center gap-3 p-5 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-blue-200 backdrop-blur-sm">
                   <ScanEye className="w-6 h-6 flex-shrink-0 animate-pulse" />
-                  <p className="font-medium">Analyzing image content...</p>
+                  <p className="font-medium">Analyzing content...</p>
                 </div>
               )}
 
@@ -443,11 +553,16 @@ export default function SwapPage() {
 
               <Button
                 onClick={handleSubmit}
-                disabled={!selectedFile || isUploading || isAnalyzing || (nsfwDetected && !isNSFW)}
+                disabled={!selectedFile || isUploading || isAnalyzing || isCompressing || (nsfwDetected && !isNSFW)}
                 className="w-full h-16 text-lg font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 text-white rounded-2xl shadow-2xl shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-300 mt-8 group"
                 size="lg"
               >
-                {isAnalyzing ? (
+                {isCompressing ? (
+                  <>
+                    <Zap className="w-6 h-6 mr-3 animate-pulse" />
+                    Processing...
+                  </>
+                ) : isAnalyzing ? (
                   <>
                     <ScanEye className="w-6 h-6 mr-3 animate-pulse" />
                     Analyzing content...

@@ -39,7 +39,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
 export const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 * 1024, // 5GB limit for videos
+    fileSize: 100 * 1024 * 1024, // 100MB limit (practical for now)
   },
   fileFilter,
 });

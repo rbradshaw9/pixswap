@@ -70,7 +70,7 @@ messageSchema.index({ status: 1 });
 messageSchema.index({ expiresAt: 1 });
 
 // Don't return deleted messages in queries by default
-messageSchema.pre(/^find/, function() {
+messageSchema.pre(/^find/, function(this: any) {
   this.find({ deletedAt: { $eq: null } });
 });
 

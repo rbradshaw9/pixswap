@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Image as ImageIcon, Video, Heart, MessageCircle, Eye, Trash2, Save, Clock, Sparkles, ArrowLeft, Calendar } from 'lucide-react';
+import { Image as ImageIcon, Video, Heart, MessageCircle, Eye, Trash2, Save, Clock, Sparkles, ArrowLeft, Calendar, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -18,7 +18,7 @@ interface UploadedContent {
 
 export default function MyUploadsPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const [uploads, setUploads] = useState<UploadedContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +114,16 @@ export default function MyUploadsPage() {
                 PixSwap
               </span>
             </div>
-            <div className="w-24"></div>
+            <div className="w-24 flex justify-end">
+              {isAuthenticated && (
+                <button
+                  onClick={() => logout()}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all text-gray-300 hover:text-white text-sm"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </nav>

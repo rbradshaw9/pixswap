@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,12 +27,19 @@ const signupSchema = z.object({
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signup, isLoading } = useAuthStore();
+  const { signup, isLoading, isAuthenticated } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   
   // Debug mode
   const urlParams = new URLSearchParams(window.location.search);
   const debug = urlParams.get('debug') === 'true';
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/swap', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const {
     register,
@@ -54,11 +61,12 @@ const SignupPage: React.FC = () => {
       await signup(data);
       
       if (debug) {
-        console.log('🐛 [DEBUG] Signup successful, navigating to /swap');
+        console.log('🐛 [DEBUG] Signup successful, reloading page');
       }
       
       toast.success('Account created successfully!');
-      navigate('/swap');
+      // Force a full page reload to ensure state hydration
+      window.location.href = '/swap';
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Signup failed';
       

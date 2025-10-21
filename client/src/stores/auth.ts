@@ -10,6 +10,8 @@ interface AuthStore extends AuthState {
   refreshUser: () => Promise<void>;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
+  hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -20,6 +22,7 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      hasHydrated: false,
 
       signup: async (data: SignupForm) => {
         set({ isLoading: true, error: null });
@@ -94,6 +97,8 @@ export const useAuthStore = create<AuthStore>()(
       clearError: () => set({ error: null }),
       
       setLoading: (loading: boolean) => set({ isLoading: loading }),
+      
+      setHasHydrated: (state: boolean) => set({ hasHydrated: state }),
     }),
     {
       name: 'auth-storage',
@@ -102,6 +107,9 @@ export const useAuthStore = create<AuthStore>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

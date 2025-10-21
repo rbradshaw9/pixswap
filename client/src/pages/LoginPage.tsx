@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,12 +18,19 @@ const loginSchema = z.object({
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuthStore();
+  const { login, isLoading, isAuthenticated } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   
   // Debug mode
   const urlParams = new URLSearchParams(window.location.search);
   const debug = urlParams.get('debug') === 'true';
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/swap', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const {
     register,
@@ -45,11 +52,12 @@ const LoginPage: React.FC = () => {
       await login(data);
       
       if (debug) {
-        console.log('🐛 [DEBUG] Login successful, navigating to /swap');
+        console.log('🐛 [DEBUG] Login successful, reloading page');
       }
       
       toast.success('Welcome back!');
-      navigate('/swap');
+      // Force a full page reload to ensure state hydration
+      window.location.href = '/swap';
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
       

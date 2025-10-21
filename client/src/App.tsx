@@ -43,7 +43,7 @@ function App() {
           {/* Public routes */}
           <Route 
             path="/" 
-            element={isAuthenticated ? <Navigate to="/swap" /> : <HomePage />} 
+            element={<Navigate to="/swap" />} 
           />
           <Route 
             path="/login" 
@@ -79,17 +79,9 @@ function App() {
             </ProtectedRoute>
           } />
           
-          <Route path="/swap" element={
-            <ProtectedRoute>
-              <SwapPage />
-            </ProtectedRoute>
-          } />
+          <Route path="/swap" element={<SwapPage />} />
           
-          <Route path="/swap/:swapId" element={
-            <ProtectedRoute>
-              <SwapChatPage />
-            </ProtectedRoute>
-          } />
+          <Route path="/swap/:swapId" element={<SwapChatPage />} />
 
           {/* Catch all redirect */}
           <Route path="*" element={<Navigate to="/" />} />

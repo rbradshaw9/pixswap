@@ -7,19 +7,25 @@ const activeUsers = new Map<string, ISocketUser>();
 const userSockets = new Map<string, string[]>(); // userId -> socketId[]
 
 export const setupSocket = (io: SocketIOServer): void => {
-  // Authentication middleware for Socket.IO
+  // Authentication middleware for Socket.IO (optional for now)
   io.use(async (socket: Socket, next) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
       
       if (!token) {
-        return next(new Error('Authentication error: No token provided'));
+        // Allow connection without token, generate temp user
+        socket.data.userId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        socket.data.username = `Guest-${socket.data.userId.substr(-6)}`;
+        return next();
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as IJwtPayload;
       
       if (!decoded.userId) {
-        return next(new Error('Authentication error: Invalid token'));
+        // Generate temp user if token invalid
+        socket.data.userId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        socket.data.username = `Guest-${socket.data.userId.substr(-6)}`;
+        return next();
       }
 
       // Add user info to socket
@@ -28,7 +34,10 @@ export const setupSocket = (io: SocketIOServer): void => {
       
       next();
     } catch (error) {
-      next(new Error('Authentication error: Invalid token'));
+      // On error, allow connection with temp user
+      socket.data.userId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      socket.data.username = `Guest-${socket.data.userId.substr(-6)}`;
+      next();
     }
   });
 

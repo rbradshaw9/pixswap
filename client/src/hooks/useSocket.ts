@@ -10,9 +10,13 @@ export function useSocket() {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
     
     if (!socket) {
+      // Connect without authentication for now
       socket = io(socketUrl, {
         withCredentials: true,
         transports: ['websocket', 'polling'],
+        auth: {
+          // No token needed for anonymous access
+        }
       });
 
       socket.on('connect', () => {

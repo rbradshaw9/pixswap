@@ -40,6 +40,13 @@ class ContentPool {
   private async loadFromDatabase() {
     try {
       const now = new Date();
+      console.log('📦 Loading content from database...');
+      console.log('📦 Current time:', now);
+      
+      // First, check total count in database
+      const totalCount = await Content.countDocuments({});
+      console.log('📦 Total content in database:', totalCount);
+      
       const contents = await Content.find({
         $or: [
           { expiresAt: { $gt: now } },
@@ -47,6 +54,17 @@ class ContentPool {
           { expiresAt: null }
         ]
       }).limit(1000).sort({ uploadedAt: -1 });
+
+      console.log('📦 Content matching query:', contents.length);
+      if (contents.length > 0) {
+        console.log('📦 Sample content:', {
+          id: contents[0]._id.toString(),
+          userId: contents[0].userId,
+          expiresAt: contents[0].expiresAt,
+          savedForever: contents[0].savedForever,
+          uploadedAt: contents[0].uploadedAt,
+        });
+      }
 
       for (const content of contents) {
         const entry: ContentEntry = {

@@ -21,6 +21,10 @@ export default function SwapPage() {
   const [nsfwPredictions, setNsfwPredictions] = useState<any>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
+  const [debugMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('debug') === 'true';
+  });
 
   // Load NSFW model on mount
   useEffect(() => {
@@ -71,7 +75,17 @@ export default function SwapPage() {
   };
 
   const analyzeImage = async (imageSrc: string) => {
-    if (!nsfwModel) return;
+    if (debugMode) console.log('[DEBUG] analyzeImage called');
+    if (!nsfwModel) {
+      if (debugMode) console.log('[DEBUG] No NSFW model loaded');
+      return;
+    }
+    
+    // Skip NSFW detection in production for now (causes browser freeze)
+    if (import.meta.env.PROD) {
+      console.log('[DEBUG] NSFW detection skipped in production');
+      return;
+    }
 
     setIsAnalyzing(true);
     try {
@@ -107,6 +121,8 @@ export default function SwapPage() {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (debugMode) console.log('[DEBUG] File selected:', { name: file.name, size: file.size, type: file.type });
 
     const isVideo = file.type.startsWith('video/');
     const isImage = file.type.startsWith('image/');
@@ -214,16 +230,24 @@ export default function SwapPage() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedFile) return;
+    if (debugMode) console.log('[DEBUG] handleSubmit called', { selectedFile: selectedFile?.name, isNSFW });
+    
+    if (!selectedFile) {
+      if (debugMode) console.log('[DEBUG] No file selected');
+      return;
+    }
 
     // Block upload if NSFW detected and filter not enabled
     if (nsfwDetected && !isNSFW) {
+      if (debugMode) console.log('[DEBUG] NSFW detected but mode not enabled');
       setError('Please enable NSFW mode to upload this image, or choose a different photo.');
       return;
     }
 
     setIsUploading(true);
     setError('');
+    
+    if (debugMode) console.log('[DEBUG] Starting upload...');
 
     try {
       const formData = new FormData();
@@ -231,20 +255,27 @@ export default function SwapPage() {
       formData.append('isNSFW', isNSFW.toString());
 
       const axiosInstance = api.getInstance();
+      const baseURL = axiosInstance.defaults.baseURL;
+      if (debugMode) console.log('[DEBUG] API baseURL:', baseURL);
+      if (debugMode) console.log('[DEBUG] Posting to: /swap/queue');
+      
       const response = await axiosInstance.post('/swap/queue', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
-      console.log('Server response:', response.data);
+      console.log('[DEBUG] Server response:', response.data);
+      if (debugMode) console.log('[DEBUG] Full response:', response);
 
       if (response.data.success) {
         if (response.data.content) {
+          if (debugMode) console.log('[DEBUG] Content received, navigating to view');
           // Got content immediately, navigate to view page
           const contentParam = encodeURIComponent(JSON.stringify(response.data.content));
           navigate(`/view?content=${contentParam}`);
         } else if (response.data.waiting) {
+          if (debugMode) console.log('[DEBUG] Waiting for other users');
           // No content available yet
           alert('Your content has been uploaded! Check back soon to see what others have shared.');
           // Reset form
@@ -255,11 +286,21 @@ export default function SwapPage() {
           }
         }
       } else {
+        if (debugMode) console.log('[DEBUG] Unexpected response format');
         // Handle old response format
         console.warn('Unexpected response format:', response.data);
         setError('Upload succeeded but response format is unexpected. Please refresh and try again.');
       }
     } catch (err: any) {
+      console.error('[DEBUG] Upload failed:', err);
+      if (debugMode) {
+        console.log('[DEBUG] Error details:', {
+          message: err.message,
+          response: err.response,
+          status: err.response?.status,
+          data: err.response?.data
+        });
+      }
       setError(err.response?.data?.message || 'Failed to upload photo');
       setIsUploading(false);
     }

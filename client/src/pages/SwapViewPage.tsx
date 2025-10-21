@@ -18,6 +18,7 @@ export default function SwapViewPage() {
   const [searchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
   const [content, setContent] = useState<any>(null);
+  const [contentUserId, setContentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [comment, setComment] = useState('');
   const [liked, setLiked] = useState(false);
@@ -25,6 +26,8 @@ export default function SwapViewPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isNSFW, setIsNSFW] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [viewsCount, setViewsCount] = useState(0);
+  const [reactionsCount, setReactionsCount] = useState(0);
 
   useEffect(() => {
     const contentData = searchParams.get('content');
@@ -32,12 +35,26 @@ export default function SwapViewPage() {
       try {
         const parsedContent = JSON.parse(decodeURIComponent(contentData));
         setContent(parsedContent);
+        setContentUserId(parsedContent.userId || null);
+        setViewsCount(parsedContent.views || 0);
+        setReactionsCount(parsedContent.reactions || 0);
         fetchComments(parsedContent.id);
+        // Track view
+        trackView(parsedContent.id);
       } catch (err) {
         console.error('Failed to parse content:', err);
       }
     }
   }, [searchParams]);
+
+  const trackView = async (contentId: string) => {
+    try {
+      // Silently track view - no need to wait or show errors
+      api.post(`/swap/${contentId}/react`, { type: 'view' });
+    } catch (err) {
+      // Ignore view tracking errors
+    }
+  };
 
   const fetchComments = async (contentId: string) => {
     try {
@@ -52,6 +69,17 @@ export default function SwapViewPage() {
     }
   };
 
+  const handleReaction = async () => {
+    if (!content) return;
+    try {
+      await api.post(`/swap/${content.id}/react`, { type: 'reaction' });
+      setReactionsCount(prev => prev + 1);
+      toast.success('🎉 Reaction added!');
+    } catch (err) {
+      console.error('Failed to react:', err);
+    }
+  };
+
   const handleLike = async () => {
     if (!isAuthenticated) {
       toast.error('Please login to like content');
@@ -62,9 +90,10 @@ export default function SwapViewPage() {
     if (!content) return;
 
     try {
-      const response = await api.post(`/swap/content/${content.id}/like`);
-      if (response.success) {
-        const data = response.data as { liked: boolean; message: string };
+      const axiosInstance = api.getInstance();
+      const response = await axiosInstance.post(`/swap/content/${content.id}/like`);
+      if (response.data.success) {
+        const data = response.data.data as { liked: boolean };
         setLiked(data.liked);
         setLikesCount(prev => data.liked ? prev + 1 : prev - 1);
         toast.success(data.liked ? '❤️ Liked!' : 'Like removed');
@@ -105,42 +134,63 @@ export default function SwapViewPage() {
   };
 
   const handleFriend = async () => {
-    if (!content) return;
+    if (!isAuthenticated) {
+      toast.error('Please login to send friend requests');
+      navigate('/login');
+      return;
+    }
+
+    if (!content || !contentUserId) return;
+
+    // Check if uploader is a real user (not temp ID)
+    if (contentUserId.startsWith('temp-')) {
+      toast.error('This user uploaded anonymously');
+      return;
+    }
 
     try {
       const axiosInstance = api.getInstance();
       await axiosInstance.post(`/swap/${content.id}/friend`, {
+        friendUserId: contentUserId,
         message: 'Friend request',
       });
 
-      alert('Friend request sent! 👋');
+      toast.success('Friend request sent! 👋');
     } catch (err) {
       console.error('Failed to send friend request:', err);
+      toast.error('Failed to send friend request');
     }
   };
 
   const handleNext = async () => {
     setLoading(true);
     try {
-      const response = await api.post('/swap/next', {
-        currentContentId: content.id,
-        isNSFW,
-      });
+      const axiosInstance = api.getInstance();
+      const formData = new FormData();
+      formData.append('userId', user?._id || `temp-${Date.now()}`);
+      formData.append('isNSFW', isNSFW.toString());
 
-      if (response.success && response.data) {
-        const data = response.data as { content: any };
-        if (data.content) {
-          setContent(data.content);
-          setLiked(false);
-          setComment('');
-          await fetchComments(data.content.id);
-        } else {
-          toast(response.message || 'No more content available');
-        }
+      const response = await axiosInstance.post('/swap/next', formData);
+
+      if (response.data.success && response.data.content) {
+        const newContent = response.data.content;
+        setContent(newContent);
+        setContentUserId(newContent.userId || null);
+        setViewsCount(newContent.views || 0);
+        setReactionsCount(newContent.reactions || 0);
+        setLiked(false);
+        setComment('');
+        setComments([]);
+        setLikesCount(0);
+        await fetchComments(newContent.id);
+        // Track view of new content
+        trackView(newContent.id);
       } else {
-        toast(response.message || 'No more content available');
+        toast(response.data.message || 'No more content available', {
+          icon: 'ℹ️',
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to get next content:', err);
       toast.error('Failed to load next content');
     } finally {
@@ -221,13 +271,15 @@ export default function SwapViewPage() {
                       <span className="font-medium">{likesCount > 0 ? likesCount : (liked ? 'Liked' : 'Like')}</span>
                     </button>
 
-                    <button
-                      onClick={handleFriend}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all"
-                    >
-                      <UserPlus className="w-5 h-5" />
-                      <span className="font-medium hidden sm:inline">Add Friend</span>
-                    </button>
+                    {contentUserId && !contentUserId.startsWith('temp-') && (
+                      <button
+                        onClick={handleFriend}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all"
+                      >
+                        <UserPlus className="w-5 h-5" />
+                        <span className="font-medium hidden sm:inline">Add Friend</span>
+                      </button>
+                    )}
 
                     <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all">
                       <Share2 className="w-5 h-5" />
@@ -330,12 +382,18 @@ export default function SwapViewPage() {
                   </p>
                   <p className="flex justify-between">
                     <span>Views:</span>
-                    <span className="text-white font-medium">{content.views || 0}</span>
+                    <span className="text-white font-medium">{viewsCount}</span>
                   </p>
                   <p className="flex justify-between">
                     <span>Reactions:</span>
-                    <span className="text-white font-medium">{content.reactions || 0}</span>
+                    <span className="text-white font-medium">{reactionsCount}</span>
                   </p>
+                  <button
+                    onClick={handleReaction}
+                    className="w-full mt-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 text-white text-sm font-medium transition-all"
+                  >
+                    🎉 React
+                  </button>
                 </div>
               </div>
 

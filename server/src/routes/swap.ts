@@ -87,9 +87,12 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       swapId,
       content: {
         id: receivedContent.id,
+        userId: receivedContent.userId,
         mediaUrl: receivedContent.mediaUrl,
         mediaType: receivedContent.mediaType,
         uploadedAt: receivedContent.timestamp,
+        views: receivedContent.views,
+        reactions: receivedContent.reactions,
       },
     });
   } catch (error: any) {
@@ -220,9 +223,12 @@ router.post('/next', upload.none(), async (req: any, res: any) => {
       success: true,
       content: {
         id: content.id,
+        userId: content.userId,
         mediaUrl: content.mediaUrl,
         mediaType: content.mediaType,
         uploadedAt: content.timestamp,
+        views: content.views,
+        reactions: content.reactions,
       },
     });
   } catch (error: any) {

@@ -38,6 +38,13 @@ export default function SwapViewPage() {
     if (contentData) {
       try {
         const parsedContent = JSON.parse(decodeURIComponent(contentData));
+        console.log('🖼️ SwapViewPage content loaded:', {
+          id: parsedContent.id,
+          isNSFW: parsedContent.isNSFW,
+          username: parsedContent.username,
+          caption: parsedContent.caption?.substring(0, 50),
+          mediaType: parsedContent.mediaType,
+        });
         setContent(parsedContent);
         setContentUserId(parsedContent.userId || null);
         setViewsCount(parsedContent.views || 0);
@@ -47,7 +54,7 @@ export default function SwapViewPage() {
         fetchComments(parsedContent.id);
         // View tracking happens server-side in getRandom/getAny
       } catch (err) {
-        console.error('Failed to parse content:', err);
+        console.error('❌ Failed to parse content:', err);
       }
     }
   }, [searchParams]);

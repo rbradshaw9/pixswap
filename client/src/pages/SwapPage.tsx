@@ -262,16 +262,22 @@ export default function SwapPage() {
   };
 
   const handleSubmit = async () => {
-    if (debugMode) console.log('[DEBUG] handleSubmit called', { selectedFile: selectedFile?.name, isNSFW });
+    console.log('📤 handleSubmit called:', { 
+      hasFile: !!selectedFile,
+      fileName: selectedFile?.name, 
+      isNSFW,
+      caption: caption.substring(0, 50),
+      nsfwDetected 
+    });
     
     if (!selectedFile) {
-      if (debugMode) console.log('[DEBUG] No file selected');
+      console.log('❌ No file selected');
       return;
     }
 
     // Block upload if NSFW detected and filter not enabled
     if (nsfwDetected && !isNSFW) {
-      if (debugMode) console.log('[DEBUG] NSFW detected but mode not enabled');
+      console.log('❌ NSFW detected but mode not enabled');
       setError('Please enable NSFW mode to upload this image, or choose a different photo.');
       return;
     }
@@ -300,11 +306,16 @@ export default function SwapPage() {
         },
       });
 
-      console.log('[DEBUG] Server response:', response.data);
-      if (debugMode) console.log('[DEBUG] Full response:', response);
+      console.log('✅ Upload response:', {
+        success: response.data.success,
+        hasContent: !!response.data.content,
+        contentId: response.data.content?.id,
+        isNSFW: response.data.content?.isNSFW,
+        caption: response.data.content?.caption?.substring(0, 30),
+      });
 
       if (response.data.success && response.data.content) {
-        if (debugMode) console.log('[DEBUG] Content received, navigating to view');
+        console.log('➡️ Navigating to view page');
         // Got content, navigate to view page
         const contentParam = encodeURIComponent(JSON.stringify(response.data.content));
         navigate(`/view?content=${contentParam}`);

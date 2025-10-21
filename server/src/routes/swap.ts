@@ -16,6 +16,15 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
     const isNSFW = req.body.isNSFW === 'true';
     const caption = req.body.caption || '';
     
+    console.log('📤 Upload request:', {
+      userId,
+      username: req.user?.username,
+      isNSFW,
+      hasCaption: !!caption,
+      captionLength: caption.length,
+      fileType: req.file?.mimetype,
+    });
+    
     // Get media URL - use relative path for uploads
     let mediaUrl = req.file?.path || req.file?.location;
     
@@ -49,8 +58,18 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       contentFilter = req.user.nsfwContentFilter || 'sfw';
     }
 
+    console.log('🎲 Getting random content with filter:', contentFilter);
+
     // Get random content from pool based on user's content filter
     let receivedContent = await contentPool.getRandom(userId, isNSFW, contentFilter);
+    
+    if (receivedContent) {
+      console.log('✓ Got content from pool:', {
+        id: receivedContent.id,
+        isNSFW: receivedContent.isNSFW,
+        username: receivedContent.username,
+      });
+    }
 
     // If no content available from others, get any random content (even their own or latest)
     if (!receivedContent) {
@@ -91,14 +110,24 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       console.warn('Could not save swap to database:', dbError);
     }
 
+    console.log('✅ Upload successful:', {
+      uploadedId: uploadedContent.id,
+      receivedId: receivedContent.id,
+      receivedIsNSFW: receivedContent.isNSFW,
+      swapId,
+    });
+
     res.json({
       success: true,
       swapId,
       content: {
         id: receivedContent.id,
         userId: receivedContent.userId,
+        username: receivedContent.username,
         mediaUrl: receivedContent.mediaUrl,
         mediaType: receivedContent.mediaType,
+        caption: receivedContent.caption,
+        isNSFW: receivedContent.isNSFW,
         uploadedAt: receivedContent.timestamp,
         views: receivedContent.views,
         reactions: receivedContent.reactions,
@@ -283,13 +312,23 @@ router.post('/next', optionalAuth, upload.none(), async (req: any, res: any) => 
       });
     }
 
+    console.log('➡️ Next content:', {
+      contentId: content.id,
+      isNSFW: content.isNSFW,
+      userId: content.userId,
+      username: content.username,
+    });
+
     res.json({
       success: true,
       content: {
         id: content.id,
         userId: content.userId,
+        username: content.username,
         mediaUrl: content.mediaUrl,
         mediaType: content.mediaType,
+        caption: content.caption,
+        isNSFW: content.isNSFW,
         uploadedAt: content.timestamp,
         views: content.views,
         reactions: content.reactions,

@@ -13,6 +13,7 @@ import FeedPage from '@/pages/FeedPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ChatPage from '@/pages/ChatPage';
 import SwapPage from '@/pages/SwapPage';
+import SwapChatPage from '@/pages/SwapChatPage';
 
 // Components
 import Layout from '@/components/Layout';
@@ -42,15 +43,15 @@ function App() {
           {/* Public routes */}
           <Route 
             path="/" 
-            element={isAuthenticated ? <Navigate to="/feed" /> : <HomePage />} 
+            element={isAuthenticated ? <Navigate to="/swap" /> : <HomePage />} 
           />
           <Route 
             path="/login" 
-            element={isAuthenticated ? <Navigate to="/feed" /> : <LoginPage />} 
+            element={isAuthenticated ? <Navigate to="/swap" /> : <LoginPage />} 
           />
           <Route 
             path="/signup" 
-            element={isAuthenticated ? <Navigate to="/feed" /> : <SignupPage />} 
+            element={isAuthenticated ? <Navigate to="/swap" /> : <SignupPage />} 
           />
 
           {/* Protected routes */}
@@ -80,9 +81,13 @@ function App() {
           
           <Route path="/swap" element={
             <ProtectedRoute>
-              <Layout>
-                <SwapPage />
-              </Layout>
+              <SwapPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/swap/:swapId" element={
+            <ProtectedRoute>
+              <SwapChatPage />
             </ProtectedRoute>
           } />
 

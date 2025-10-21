@@ -108,15 +108,37 @@ export const setupSocket = (io: SocketIOServer): void => {
     });
 
     // Handle swap matching
-    socket.on('swap:join', (data: { category?: string; theme?: string }) => {
-      socket.join('swap-queue');
-      socket.emit('swap:joined', { message: 'Joined swap queue' });
-      console.log(`🔄 User ${username} joined swap queue`);
+    socket.on('swap:join', (data: { swapId: string }) => {
+      const roomName = `swap:${data.swapId}`;
+      socket.join(roomName);
+      socketUser.rooms.push(roomName);
+      
+      // Notify partner that user connected
+      socket.to(roomName).emit('swap:partner-connect');
+      console.log(`🔄 User ${username} joined swap ${data.swapId}`);
     });
 
-    socket.on('swap:leave', () => {
-      socket.leave('swap-queue');
-      console.log(`🔄 User ${username} left swap queue`);
+    socket.on('swap:leave', (data: { swapId: string }) => {
+      const roomName = `swap:${data.swapId}`;
+      socket.leave(roomName);
+      socketUser.rooms = socketUser.rooms.filter(room => room !== roomName);
+      
+      // Notify partner that user disconnected
+      socket.to(roomName).emit('swap:partner-disconnect');
+      console.log(`🔄 User ${username} left swap ${data.swapId}`);
+    });
+
+    socket.on('swap:message', (data: { swapId: string; content: string }) => {
+      const roomName = `swap:${data.swapId}`;
+      const message = {
+        id: Date.now().toString(),
+        senderId: userId,
+        content: data.content,
+        timestamp: new Date(),
+      };
+      
+      // Send to everyone in the room including sender
+      io.to(roomName).emit('swap:message', message);
     });
 
     socket.on('swap:submit', (data: { swapId: string; mediaId: string }) => {

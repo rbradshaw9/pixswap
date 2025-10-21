@@ -15,6 +15,7 @@ import { connectDB } from '@/utils/database';
 import { errorHandler } from '@/middleware/errorHandler';
 import { notFound } from '@/middleware/notFound';
 import { setupSocket } from '@/socket/socketHandler';
+import { setIO } from '@/socket';
 
 // Import routes
 import authRoutes from '@/routes/auth';
@@ -92,6 +93,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/swap', swapRoutes);
 
 // Socket.IO setup
+setIO(io);
 setupSocket(io);
 
 // Error handling middleware (must be last)

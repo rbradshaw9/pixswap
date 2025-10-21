@@ -37,11 +37,20 @@ export default function LikedPostsPage() {
   const fetchLikedPosts = async () => {
     setLoading(true);
     try {
+      console.log('❤️ Fetching liked posts...');
       const response = await api.get('/swap/liked-posts');
+      console.log('❤️ Liked posts response:', {
+        success: response.success,
+        dataType: typeof response.data,
+        dataLength: Array.isArray(response.data) ? response.data.length : 'not an array',
+        sample: Array.isArray(response.data) ? response.data.slice(0, 2) : null,
+      });
       if (response.success && response.data) {
         setLikedPosts(response.data as LikedContent[]);
       }
     } catch (err: any) {
+      console.error('❤️ Liked posts error:', err);
+      console.error('❤️ Error response:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to load liked posts');
     } finally {
       setLoading(false);

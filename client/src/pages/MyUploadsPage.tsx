@@ -35,11 +35,20 @@ export default function MyUploadsPage() {
   const fetchMyUploads = async () => {
     setLoading(true);
     try {
+      console.log('📂 Fetching my uploads...');
       const response = await api.get('/swap/my-uploads');
+      console.log('📂 My uploads response:', {
+        success: response.success,
+        dataType: typeof response.data,
+        dataLength: Array.isArray(response.data) ? response.data.length : 'not an array',
+        sample: response.data?.slice?.(0, 2),
+      });
       if (response.success && response.data) {
         setUploads(response.data as UploadedContent[]);
       }
     } catch (err: any) {
+      console.error('📂 My uploads error:', err);
+      console.error('📂 Error response:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to load uploads');
     } finally {
       setLoading(false);

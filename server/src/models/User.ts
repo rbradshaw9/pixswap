@@ -64,6 +64,10 @@ const userSchema = new Schema<IUser>({
     type: Schema.Types.ObjectId,
     ref: 'User',
   }],
+  nsfwEnabled: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
   toJSON: {

@@ -15,6 +15,7 @@ export interface IUser extends Document {
   lastSeen: Date;
   blockedUsers: Types.ObjectId[];
   friends: Types.ObjectId[];
+  nsfwEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;

@@ -29,17 +29,14 @@ export default function SwapPage() {
     return params.get('debug') === 'true';
   });
 
-  // Load NSFW model on mount (skip in production to avoid browser freeze)
+  // Load NSFW model on mount
   useEffect(() => {
-    if (import.meta.env.PROD) {
-      console.log('NSFW model loading skipped in production');
-      return;
-    }
-    
     const loadModel = async () => {
       try {
+        console.log('Loading NSFW detection model...');
         const model = await nsfwjs.load();
         setNsfwModel(model);
+        console.log('NSFW model loaded successfully');
       } catch (err) {
         console.error('Failed to load NSFW model:', err);
       }
@@ -84,14 +81,17 @@ export default function SwapPage() {
 
   const analyzeImage = async (imageSrc: string) => {
     if (debugMode) console.log('[DEBUG] analyzeImage called');
-    if (!nsfwModel) {
-      if (debugMode) console.log('[DEBUG] No NSFW model loaded');
+    
+    // Skip analysis if NSFW mode is enabled (user explicitly wants NSFW)
+    if (isNSFW) {
+      if (debugMode) console.log('[DEBUG] NSFW mode enabled, skipping detection');
+      setNsfwDetected(false);
+      setError('');
       return;
     }
     
-    // Skip NSFW detection in production for now (causes browser freeze)
-    if (import.meta.env.PROD) {
-      console.log('[DEBUG] NSFW detection skipped in production');
+    if (!nsfwModel) {
+      if (debugMode) console.log('[DEBUG] No NSFW model loaded yet');
       return;
     }
 
@@ -107,20 +107,26 @@ export default function SwapPage() {
       const predictions = await nsfwModel.classify(img);
       setNsfwPredictions(predictions);
       
-      // Check for NSFW content (Porn, Hentai, Sexy)
+      if (debugMode) console.log('[DEBUG] NSFW predictions:', predictions);
+      
+      // Check for NSFW content with 0.6 threshold (Porn, Hentai, Sexy)
+      // Using 0.6 instead of 0.5 to reduce false positives
       const nsfwContent = predictions.find((p: any) => 
-        (p.className === 'Porn' || p.className === 'Hentai' || p.className === 'Sexy') && p.probability > 0.5
+        (p.className === 'Porn' || p.className === 'Hentai' || p.className === 'Sexy') && p.probability > 0.6
       );
 
-      if (nsfwContent && !isNSFW) {
+      if (nsfwContent) {
         setNsfwDetected(true);
-        setError('NSFW content detected! Please enable NSFW mode to upload this content.');
+        setError(`NSFW content detected (${nsfwContent.className}: ${Math.round(nsfwContent.probability * 100)}%). Please enable NSFW mode to upload this content.`);
       } else {
         setNsfwDetected(false);
         setError('');
       }
     } catch (err) {
       console.error('Failed to analyze image:', err);
+      // Don't block upload on analysis error
+      setNsfwDetected(false);
+      setError('');
     } finally {
       setIsAnalyzing(false);
     }
@@ -324,7 +330,14 @@ export default function SwapPage() {
     if (preview) {
       analyzeImage(preview);
     }
-  }, [isNSFW]);
+    
+    // Save NSFW preference to user account if authenticated
+    if (isAuthenticated) {
+      api.patch('/user/nsfw-preference', { nsfwEnabled: isNSFW }).catch(err => {
+        console.warn('Failed to save NSFW preference:', err);
+      });
+    }
+  }, [isNSFW, isAuthenticated]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900">

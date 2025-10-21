@@ -40,6 +40,8 @@ export default function SwapViewPage() {
         setContent(parsedContent);
         setContentUserId(parsedContent.userId || null);
         setViewsCount(parsedContent.views || 0);
+        // Set NSFW mode based on content - important for Next button matching
+        setIsNSFW(parsedContent.isNSFW || false);
         // Reactions feature removed for v1
         fetchComments(parsedContent.id);
         // Track view

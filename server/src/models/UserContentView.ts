@@ -11,21 +11,18 @@ const userContentViewSchema = new Schema<IUserContentView>({
   userId: {
     type: String,
     required: true,
-    index: true,
   },
   contentId: {
     type: String,
     required: true,
-    index: true,
   },
   viewedAt: {
     type: Date,
     default: Date.now,
-    index: true,
   },
 });
 
-// Compound index for efficient queries
+// Compound indexes for efficient queries
 userContentViewSchema.index({ userId: 1, contentId: 1 }, { unique: true });
 userContentViewSchema.index({ userId: 1, viewedAt: -1 });
 

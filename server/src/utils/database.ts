@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { contentPool } from '@/services/contentPool';
 
 export const connectDB = async (): Promise<void> => {
   try {
@@ -19,6 +20,10 @@ export const connectDB = async (): Promise<void> => {
     await mongoose.connect(mongoURI, options);
 
     console.log('✅ Connected to MongoDB');
+
+    // Initialize content pool after connection is established
+    await contentPool.initialize();
+    console.log('📦 Content pool initialized');
 
     // Handle connection events
     mongoose.connection.on('error', (error) => {

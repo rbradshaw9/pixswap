@@ -16,13 +16,11 @@ const swapCommentSchema = new Schema<ISwapComment>({
   contentId: {
     type: String,
     required: [true, 'Content ID is required'],
-    index: true,
   },
   author: {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'Author is required'],
-    index: true,
   },
   username: {
     type: String,
@@ -45,7 +43,6 @@ const swapCommentSchema = new Schema<ISwapComment>({
   parentId: {
     type: String,
     default: null,
-    index: true,
   },
   likes: {
     type: Number,
@@ -55,7 +52,7 @@ const swapCommentSchema = new Schema<ISwapComment>({
   timestamps: true,
 });
 
-// Indexes for efficient queries
+// Indexes for efficient queries (compound indexes are more efficient than individual ones)
 swapCommentSchema.index({ contentId: 1, createdAt: -1 });
 swapCommentSchema.index({ author: 1, contentId: 1 });
 swapCommentSchema.index({ type: 1, contentId: 1 });

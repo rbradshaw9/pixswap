@@ -68,7 +68,7 @@ const swapSchema = new Schema<ISwap>({
 // Indexes for better query performance
 swapSchema.index({ status: 1, createdAt: -1 });
 swapSchema.index({ 'participants.user': 1 });
-swapSchema.index({ expiresAt: 1 });
+// Note: expiresAt already has TTL index in field definition
 swapSchema.index({ 'metadata.category': 1 });
 
 // Validate participants array

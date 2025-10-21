@@ -81,8 +81,7 @@ const userSchema = new Schema<IUser>({
 });
 
 // Index for better query performance
-userSchema.index({ username: 1 });
-userSchema.index({ email: 1 });
+// Note: username and email already have unique indexes
 userSchema.index({ isActive: 1 });
 userSchema.index({ lastSeen: -1 });
 

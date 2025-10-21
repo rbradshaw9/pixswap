@@ -22,10 +22,17 @@ class ContentPool {
   private pool: Map<string, ContentEntry> = new Map();
   private userContent: Map<string, Set<string>> = new Map(); // Track what each user has seen
   private useDatabase: boolean = true;
+  private isInitialized: boolean = false;
 
   constructor() {
-    // Initialize from database on startup
-    this.loadFromDatabase();
+    // Don't load immediately - wait for database connection
+  }
+
+  // Initialize after database connection
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+    await this.loadFromDatabase();
+    this.isInitialized = true;
   }
 
   // Load existing content from MongoDB into memory

@@ -98,7 +98,7 @@ mediaSchema.index({ owner: 1, createdAt: -1 });
 mediaSchema.index({ visibility: 1, createdAt: -1 });
 mediaSchema.index({ tags: 1 });
 mediaSchema.index({ moderationStatus: 1 });
-mediaSchema.index({ expiresAt: 1 });
+// Note: expiresAt already has TTL index in field definition
 
 // Virtual for likes count
 mediaSchema.virtual('likesCount').get(function() {

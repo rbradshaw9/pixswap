@@ -67,7 +67,7 @@ const messageSchema = new Schema<IMessage>({
 messageSchema.index({ chatRoom: 1, createdAt: -1 });
 messageSchema.index({ sender: 1, createdAt: -1 });
 messageSchema.index({ status: 1 });
-messageSchema.index({ expiresAt: 1 });
+// Note: expiresAt already has TTL index in field definition
 
 // Don't return deleted messages in queries by default
 messageSchema.pre(/^find/, function(this: any) {

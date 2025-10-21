@@ -1,0 +1,11 @@
+server/
+docs/
+.github/
+docker-compose.yml
+docker-compose.dev.yml
+*.md
+!client/README.md
+.env
+.env.local
+node_modules/
+.DS_Store

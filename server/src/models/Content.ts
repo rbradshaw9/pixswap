@@ -6,6 +6,7 @@ export interface IContent {
   username?: string;
   mediaUrl: string;
   mediaType: 'image' | 'video';
+  caption?: string;
   isNSFW: boolean;
   views: number;
   reactions: number;
@@ -33,6 +34,10 @@ const contentSchema = new Schema<IContent>({
     type: String,
     enum: ['image', 'video'],
     required: true,
+  },
+  caption: {
+    type: String,
+    maxlength: 500,
   },
   isNSFW: {
     type: Boolean,

@@ -252,6 +252,13 @@ export default function SwapViewPage() {
                 />
               </BlurredNSFWContent>
               
+              {/* Caption */}
+              {content.caption && (
+                <div className="px-6 py-4 bg-black/20 border-b border-white/10">
+                  <p className="text-white leading-relaxed">{content.caption}</p>
+                </div>
+              )}
+              
               {/* Action Bar */}
               <div className="p-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
                 <div className="flex items-center justify-between mb-4">

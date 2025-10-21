@@ -14,6 +14,7 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
     // Use authenticated user ID if available, otherwise generate temp ID
     const userId = req.user?._id?.toString() || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const isNSFW = req.body.isNSFW === 'true';
+    const caption = req.body.caption || '';
     
     // Get media URL - use relative path for uploads
     let mediaUrl = req.file?.path || req.file?.location;
@@ -37,6 +38,7 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       username: req.user?.username,
       mediaUrl,
       mediaType: req.file.mimetype.startsWith('video') ? 'video' : 'image',
+      caption,
       isNSFW,
       timestamp: Date.now(),
     });
@@ -340,11 +342,25 @@ router.get('/liked-posts', protect, async (req: any, res: any) => {
       type: 'like',
     }).sort({ createdAt: -1 }).lean();
     
+    console.log('❤️ Found', userLikes.length, 'likes from user');
+    
     // Get the content for each like
-    const contentIds = userLikes.map(like => like.contentId);
+    const contentIds = userLikes.map(like => like.contentId).filter(id => id);
+    console.log('❤️ Content IDs:', contentIds);
+    
+    if (contentIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        timestamp: new Date(),
+      });
+    }
+    
     const likedContent = await Content.find({ 
       _id: { $in: contentIds }
     }).lean();
+    
+    console.log('❤️ Found', likedContent.length, 'content items');
     
     // Map likes to content with likedAt timestamp
     const likedPosts = likedContent.map(content => {
@@ -353,6 +369,7 @@ router.get('/liked-posts', protect, async (req: any, res: any) => {
         id: content._id.toString(),
         mediaUrl: content.mediaUrl,
         mediaType: content.mediaType,
+        caption: content.caption,
         username: content.username,
         uploadedAt: content.uploadedAt.getTime(),
         views: content.views,
@@ -362,7 +379,7 @@ router.get('/liked-posts', protect, async (req: any, res: any) => {
       };
     });
     
-    console.log('❤️ Found', likedPosts.length, 'liked posts');
+    console.log('❤️ Returning', likedPosts.length, 'liked posts');
 
     res.json({
       success: true,
@@ -370,7 +387,8 @@ router.get('/liked-posts', protect, async (req: any, res: any) => {
       timestamp: new Date(),
     });
   } catch (error: any) {
-    console.error('Get liked posts error:', error);
+    console.error('❤️ Get liked posts error:', error);
+    console.error('❤️ Error stack:', error.stack);
     res.status(500).json({ 
       success: false,
       message: error.message || 'Failed to fetch liked posts',

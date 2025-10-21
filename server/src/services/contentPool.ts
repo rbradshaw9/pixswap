@@ -10,6 +10,7 @@ interface ContentEntry {
   username?: string;
   mediaUrl: string;
   mediaType: 'image' | 'video';
+  caption?: string;
   isNSFW: boolean;
   timestamp: number;
   views: number;
@@ -54,6 +55,7 @@ class ContentPool {
           username: content.username,
           mediaUrl: content.mediaUrl,
           mediaType: content.mediaType,
+          caption: content.caption,
           isNSFW: content.isNSFW,
           timestamp: content.uploadedAt.getTime(),
           views: content.views,
@@ -95,6 +97,7 @@ class ContentPool {
           username: content.username,
           mediaUrl: content.mediaUrl,
           mediaType: content.mediaType,
+          caption: content.caption,
           isNSFW: content.isNSFW,
           views: 0,
           reactions: 0,

@@ -12,7 +12,13 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCog,
-  LogOut
+  LogOut,
+  Image as ImageIcon,
+  Video,
+  Eye,
+  EyeOff,
+  Flame,
+  MessageCircle
 } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import { useAuthStore } from '@/stores/auth';
@@ -20,6 +26,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import ProtectedMedia from '@/components/ProtectedMedia';
 
 interface User {
   _id: string;
@@ -34,6 +41,20 @@ interface User {
   lastSeen: string;
 }
 
+interface MediaContent {
+  _id: string;
+  userId: string;
+  username?: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  caption?: string;
+  isNSFW: boolean;
+  views: number;
+  reactions: number;
+  comments: number;
+  uploadedAt: string;
+}
+
 interface AdminStats {
   totalUsers: number;
   activeUsers: number;
@@ -45,13 +66,16 @@ interface AdminStats {
 const AdminPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<'users' | 'media'>('users');
   const [users, setUsers] = useState<User[]>([]);
+  const [media, setMedia] = useState<MediaContent[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [mediaFilter, setMediaFilter] = useState<'all' | 'sfw' | 'nsfw'>('all');
 
   useEffect(() => {
     // Check if user is admin
@@ -61,8 +85,12 @@ const AdminPage = () => {
     }
 
     fetchStats();
-    fetchUsers();
-  }, [isAuthenticated, user, navigate, page, search]);
+    if (activeTab === 'users') {
+      fetchUsers();
+    } else {
+      fetchMedia();
+    }
+  }, [isAuthenticated, user, navigate, page, search, activeTab, mediaFilter]);
 
   const fetchStats = async () => {
     try {
@@ -73,6 +101,57 @@ const AdminPage = () => {
       }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const fetchMedia = async () => {
+    try {
+      setIsLoading(true);
+      const params: any = { page, limit: 20 };
+      if (search) params.search = search;
+      if (mediaFilter !== 'all') {
+        params.isNSFW = mediaFilter === 'nsfw';
+      }
+
+      const response = await api.get('/admin/media', params);
+      if (response.success && response.data) {
+        const data = response.data as { contents: MediaContent[]; pagination: { pages: number } };
+        setMedia(data.contents || []);
+        setTotalPages(data.pagination.pages || 1);
+      }
+    } catch (error) {
+      console.error('Failed to fetch media:', error);
+      toast.error('Failed to load media library');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteContent = async (contentId: string) => {
+    if (!confirm('Are you sure you want to delete this content? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(`/admin/media/${contentId}`);
+      if (response.success) {
+        toast.success('Content deleted successfully');
+        fetchMedia();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete content');
+    }
+  };
+
+  const handleToggleNSFW = async (contentId: string) => {
+    try {
+      const response = await api.patch(`/admin/media/${contentId}/nsfw`);
+      if (response.success) {
+        toast.success(response.message || 'Content updated');
+        fetchMedia();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update content');
     }
   };
 
@@ -209,12 +288,48 @@ const AdminPage = () => {
           </div>
         )}
 
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => {
+                setActiveTab('users');
+                setPage(1);
+                setSearch('');
+              }}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                activeTab === 'users'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Users className="w-5 h-5" />
+              User Management
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('media');
+                setPage(1);
+                setSearch('');
+              }}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                activeTab === 'media'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <ImageIcon className="w-5 h-5" />
+              Media Library
+            </button>
+          </div>
+        </div>
+
         {/* Search */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <Input
-                placeholder="Search by username or email..."
+                placeholder={activeTab === 'users' ? "Search by username or email..." : "Search by username or caption..."}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -222,10 +337,54 @@ const AdminPage = () => {
                 }}
               />
             </div>
+            {activeTab === 'media' && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setMediaFilter('all');
+                    setPage(1);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    mediaFilter === 'all'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => {
+                    setMediaFilter('sfw');
+                    setPage(1);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    mediaFilter === 'sfw'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  SFW
+                </button>
+                <button
+                  onClick={() => {
+                    setMediaFilter('nsfw');
+                    setPage(1);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    mediaFilter === 'nsfw'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  NSFW
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Users Table */}
+        {activeTab === 'users' && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -381,6 +540,155 @@ const AdminPage = () => {
             </div>
           )}
         </div>
+        )}
+
+        {/* Media Library Grid */}
+        {activeTab === 'media' && (
+          <div className="space-y-6">
+            {isLoading ? (
+              <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
+                Loading media...
+              </div>
+            ) : media.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
+                No media found
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {media.map((item) => (
+                    <div key={item._id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-xl transition-shadow">
+                      <div className="relative aspect-square bg-gray-100">
+                        <ProtectedMedia
+                          mediaUrl={item.mediaUrl.startsWith('http') ? item.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${item.mediaUrl}`}
+                          mediaType={item.mediaType}
+                          alt={item.caption || 'Content'}
+                          className="w-full h-full object-cover"
+                          showWatermark={false}
+                        />
+                        <div className="absolute top-2 right-2 flex gap-2">
+                          {item.isNSFW && (
+                            <span className="px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                              <Flame className="w-3 h-3" />
+                              NSFW
+                            </span>
+                          )}
+                          {item.mediaType === 'video' && (
+                            <span className="px-2 py-1 bg-black/70 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                              <Video className="w-3 h-3" />
+                              Video
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">
+                              @{item.username || 'Anonymous'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(item.uploadedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {item.caption && (
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                            {item.caption}
+                          </p>
+                        )}
+                        
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {item.views}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageCircle className="w-3 h-3" />
+                            {item.comments}
+                          </span>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleToggleNSFW(item._id)}
+                            className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                              item.isNSFW
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-red-100 text-red-700 hover:bg-red-200'
+                            }`}
+                            title={item.isNSFW ? 'Mark as SFW' : 'Mark as NSFW'}
+                          >
+                            {item.isNSFW ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                            {item.isNSFW ? 'SFW' : 'NSFW'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteContent(item._id)}
+                            className="px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                            title="Delete content"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between">
+                    <div className="flex-1 flex justify-between sm:hidden">
+                      <Button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          Page <span className="font-medium">{page}</span> of{' '}
+                          <span className="font-medium">{totalPages}</span>
+                        </p>
+                      </div>
+                      <div>
+                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                          <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Edit User Modal */}

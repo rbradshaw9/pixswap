@@ -15,6 +15,7 @@ export default function SwapPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>('');
   const [fileType, setFileType] = useState<'image' | 'video'>('image');
+  const [caption, setCaption] = useState('');
   const [isNSFW, setIsNSFW] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
@@ -284,6 +285,9 @@ export default function SwapPage() {
       const formData = new FormData();
       formData.append('image', selectedFile);
       formData.append('isNSFW', isNSFW.toString());
+      if (caption.trim()) {
+        formData.append('caption', caption.trim());
+      }
 
       const axiosInstance = api.getInstance();
       const baseURL = axiosInstance.defaults.baseURL;
@@ -538,6 +542,25 @@ export default function SwapPage() {
                 onChange={handleFileSelect}
                 className="hidden"
               />
+
+              {preview && (
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Caption (Optional)
+                  </label>
+                  <textarea
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Add a description, story, or context to your photo..."
+                    className="w-full px-4 py-3 bg-black/20 border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-400/50 focus:ring-2 focus:ring-purple-500/20 resize-none transition-all"
+                    rows={3}
+                    maxLength={500}
+                  />
+                  <p className="mt-2 text-xs text-gray-400">
+                    {caption.length}/500 characters
+                  </p>
+                </div>
+              )}
 
               {isCompressing && (
                 <div className="mt-6 p-5 bg-blue-500/10 border border-blue-500/30 rounded-2xl backdrop-blur-sm">

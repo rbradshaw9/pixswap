@@ -34,7 +34,7 @@ router.get('/profile/:username', optionalAuth, async (req: any, res: any) => {
     .lean();
 
     // Get like status for each content if user is authenticated
-    let contentWithLikes = content;
+    let contentWithLikes: any[] = [];
     if (currentUserId) {
       contentWithLikes = await Promise.all(content.map(async (item) => {
         const liked = await SwapComment.exists({

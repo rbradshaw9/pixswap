@@ -9,13 +9,13 @@ const swapSchema = new Schema<ISwap>({
       required: true,
     },
     mediaSubmitted: {
-      type: Schema.Types.ObjectId,
-      ref: 'Media',
+      type: String,
+      ref: 'Content',
       default: null,
     },
     mediaReceived: {
-      type: Schema.Types.ObjectId,
-      ref: 'Media',
+      type: String,
+      ref: 'Content',
       default: null,
     },
     submittedAt: {

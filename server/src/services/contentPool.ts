@@ -134,8 +134,6 @@ class ContentPool {
           uploadedAt: new Date(content.timestamp),
           expiresAt,
         });
-        content.id = dbContent._id.toString();
-        this.pool.set(content.id, content);
         console.log('💾 Content saved to database successfully:', id);
       } catch (error) {
         console.error('❌ Failed to save to database:', error);

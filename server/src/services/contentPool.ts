@@ -104,6 +104,14 @@ class ContentPool {
     }
   }
 
+  // Add comment count to content
+  async addComment(id: string): Promise<void> {
+    const content = this.pool.get(id);
+    if (content) {
+      content.comments = (content.comments || 0) + 1;
+    }
+  }
+
   // Get pool size
   size(): number {
     return this.pool.size;

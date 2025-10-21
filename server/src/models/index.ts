@@ -1,6 +1,7 @@
 export { User } from './User';
 export { Media } from './Media';
 export { Comment } from './Comment';
+export { SwapComment } from './SwapComment';
 export { Message } from './Message';
 export { ChatRoom } from './ChatRoom';
 export { Swap } from './Swap';

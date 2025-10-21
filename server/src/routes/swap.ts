@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { upload } from '@/middleware/upload';
 import { optionalAuth, protect } from '@/middleware/auth';
-import { Swap } from '@/models';
+import { Swap, SwapComment } from '@/models';
 import { SwapStatus } from '@/types';
 import { contentPool } from '@/services/contentPool';
 import { getIO } from '@/socket';
@@ -226,7 +226,11 @@ router.post('/next', upload.none(), async (req: any, res: any) => {
 router.get('/my-uploads', protect, async (req: any, res: any) => {
   try {
     const userId = req.user._id.toString();
+    console.log('📂 Fetching uploads for user:', userId);
+    
     const userContent = await contentPool.getUserContent(userId);
+    
+    console.log('📂 Found', userContent.length, 'uploads for user');
 
     res.json({
       success: true,
@@ -275,6 +279,126 @@ router.post('/content/:contentId/save', protect, async (req: any, res: any) => {
   } catch (error: any) {
     console.error('Save toggle error:', error);
     res.status(500).json({ message: error.message || 'Failed to update save status' });
+  }
+});
+
+// Add comment to content (requires auth)
+router.post('/content/:contentId/comment', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    const username = req.user.username;
+    const { contentId } = req.params;
+    const { text } = req.body;
+
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ message: 'Comment text is required' });
+    }
+
+    const comment = await SwapComment.create({
+      contentId,
+      author: userId,
+      username,
+      text: text.trim(),
+      type: 'comment',
+    });
+
+    // Update content pool comment count
+    await contentPool.addComment(contentId);
+
+    console.log('💬 Comment added:', { contentId, username, commentId: comment._id });
+
+    res.json({
+      success: true,
+      data: comment,
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Add comment error:', error);
+    res.status(500).json({ message: error.message || 'Failed to add comment' });
+  }
+});
+
+// Add like to content (requires auth)
+router.post('/content/:contentId/like', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    const username = req.user.username;
+    const { contentId } = req.params;
+
+    // Check if user already liked
+    const existingLike = await SwapComment.findOne({
+      contentId,
+      author: userId,
+      type: 'like',
+    });
+
+    if (existingLike) {
+      // Unlike - remove the like
+      await SwapComment.deleteOne({ _id: existingLike._id });
+      
+      res.json({
+        success: true,
+        liked: false,
+        message: 'Like removed',
+        timestamp: new Date(),
+      });
+    } else {
+      // Like - create new like
+      await SwapComment.create({
+        contentId,
+        author: userId,
+        username,
+        type: 'like',
+        text: '', // Not required for likes
+      });
+
+      // Update content pool reaction count
+      await contentPool.addReaction(contentId);
+
+      console.log('❤️ Like added:', { contentId, username });
+
+      res.json({
+        success: true,
+        liked: true,
+        message: 'Content liked',
+        timestamp: new Date(),
+      });
+    }
+  } catch (error: any) {
+    console.error('Add like error:', error);
+    res.status(500).json({ message: error.message || 'Failed to add like' });
+  }
+});
+
+// Get comments for content
+router.get('/content/:contentId/comments', async (req: any, res: any) => {
+  try {
+    const { contentId } = req.params;
+
+    const comments = await SwapComment.find({
+      contentId,
+      type: 'comment',
+    })
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    const likes = await SwapComment.countDocuments({
+      contentId,
+      type: 'like',
+    });
+
+    res.json({
+      success: true,
+      data: {
+        comments,
+        likes,
+        total: comments.length,
+      },
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ message: error.message || 'Failed to fetch comments' });
   }
 });
 

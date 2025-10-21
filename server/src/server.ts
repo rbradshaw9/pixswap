@@ -88,6 +88,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/user', userRoutes); // Alias for singular form
 app.use('/api/media', mediaRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/chat', chatRoutes);

@@ -109,6 +109,16 @@ class ContentPool {
     // Save to database
     if (this.useDatabase) {
       try {
+        const expiresAt = content.saveForever ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000);
+        console.log('💾 Saving content to database:', {
+          id,
+          userId: content.userId,
+          mediaType: content.mediaType,
+          isNSFW: content.isNSFW,
+          saveForever: content.saveForever,
+          expiresAt,
+        });
+        
         const dbContent = await Content.create({
           _id: id,
           userId: content.userId,
@@ -122,12 +132,13 @@ class ContentPool {
           comments: 0,
           savedForever: content.saveForever || false,
           uploadedAt: new Date(content.timestamp),
-          expiresAt: content.saveForever ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000),
+          expiresAt,
         });
         content.id = dbContent._id.toString();
         this.pool.set(content.id, content);
+        console.log('💾 Content saved to database successfully:', id);
       } catch (error) {
-        console.error('Failed to save to database:', error);
+        console.error('❌ Failed to save to database:', error);
       }
     }
     

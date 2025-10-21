@@ -41,31 +41,37 @@ router.post('/queue', upload.single('image'), async (req: any, res: any) => {
       });
     }
 
-    // Create swap record
-    const swap = await Swap.create({
-      participants: [
-        {
-          user: userId,
-          mediaSubmitted: uploadedContent.id,
-          submittedAt: new Date(),
+    // Try to create swap record (optional if DB not connected)
+    let swapId = `temp-swap-${Date.now()}`;
+    try {
+      const swap = await Swap.create({
+        participants: [
+          {
+            user: userId,
+            mediaSubmitted: uploadedContent.id,
+            submittedAt: new Date(),
+          },
+          {
+            user: receivedContent.userId,
+            mediaSubmitted: receivedContent.id,
+            submittedAt: new Date(),
+          },
+        ],
+        status: SwapStatus.MATCHED,
+        matchedAt: new Date(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        metadata: {
+          category: isNSFW ? 'nsfw' : 'sfw',
         },
-        {
-          user: receivedContent.userId,
-          mediaSubmitted: receivedContent.id,
-          submittedAt: new Date(),
-        },
-      ],
-      status: SwapStatus.MATCHED,
-      matchedAt: new Date(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-      metadata: {
-        category: isNSFW ? 'nsfw' : 'sfw',
-      },
-    });
+      });
+      swapId = swap._id.toString();
+    } catch (dbError) {
+      console.warn('Could not save swap to database:', dbError);
+    }
 
     res.json({
       success: true,
-      swapId: swap._id,
+      swapId,
       content: {
         id: receivedContent.id,
         mediaUrl: receivedContent.mediaUrl,

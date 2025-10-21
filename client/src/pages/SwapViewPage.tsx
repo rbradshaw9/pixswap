@@ -11,6 +11,7 @@ export default function SwapViewPage() {
   const [loading, setLoading] = useState(false);
   const [comment, setComment] = useState('');
   const [liked, setLiked] = useState(false);
+  const [isNSFW, setIsNSFW] = useState(false);
 
   useEffect(() => {
     const contentData = searchParams.get('content');
@@ -33,9 +34,9 @@ export default function SwapViewPage() {
 
     try {
       const axiosInstance = api.getInstance();
-      await axiosInstance.post(`/swaps/${content.id}/react`, {
-        reaction: 'comment',
-        comment: comment.trim(),
+      await axiosInstance.post(`/swap/${content.id}/react`, {
+        like: !liked,
+        comment: comment || undefined,
       });
 
       setComment('');
@@ -50,8 +51,8 @@ export default function SwapViewPage() {
 
     try {
       const axiosInstance = api.getInstance();
-      await axiosInstance.post(`/swaps/${content.id}/friend`, {
-        friendUserId: content.userId,
+      await axiosInstance.post(`/swap/${content.id}/friend`, {
+        message: 'Friend request',
       });
 
       alert('Friend request sent! 👋');
@@ -64,11 +65,10 @@ export default function SwapViewPage() {
     setLoading(true);
     try {
       const axiosInstance = api.getInstance();
-      const response = await axiosInstance.post('/swaps/next', {
-        isNSFW: content?.isNSFW || false,
-      });
-
-      if (response.data.success && response.data.content) {
+      const response = await axiosInstance.post('/swap/next', {
+        currentContentId: content.id,
+        isNSFW,
+      });      if (response.data.success && response.data.content) {
         setContent(response.data.content);
       } else {
         alert(response.data.message || 'No more content available');

@@ -231,11 +231,13 @@ export default function SwapPage() {
       formData.append('isNSFW', isNSFW.toString());
 
       const axiosInstance = api.getInstance();
-      const response = await axiosInstance.post('/swaps/queue', formData, {
+      const response = await axiosInstance.post('/swap/queue', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
+
+      console.log('Server response:', response.data);
 
       if (response.data.success) {
         if (response.data.content) {
@@ -252,6 +254,10 @@ export default function SwapPage() {
             fileInputRef.current.value = '';
           }
         }
+      } else {
+        // Handle old response format
+        console.warn('Unexpected response format:', response.data);
+        setError('Upload succeeded but response format is unexpected. Please refresh and try again.');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to upload photo');

@@ -40,7 +40,7 @@ export default function SwapChatPage() {
 
     const loadSwap = async () => {
       try {
-        const response = await api.get<SwapData>(`/swaps/${swapId}`);
+        const response = await api.get<SwapData>(`/swap/${swapId}`);
         setSwapData(response.data as SwapData);
         setIsLoading(false);
       } catch (error) {
@@ -121,7 +121,7 @@ export default function SwapChatPage() {
       formData.append('image', file);
 
       const axiosInstance = api.getInstance();
-      await axiosInstance.post(`/swaps/${swapId}/photos`, formData, {
+      await axiosInstance.post(`/swap/${swapId}/photos`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

@@ -37,14 +37,15 @@ export default function MyUploadsPage() {
     try {
       console.log('📂 Fetching my uploads...');
       const response = await api.get('/swap/my-uploads');
+      const data = response.data as any;
       console.log('📂 My uploads response:', {
         success: response.success,
-        dataType: typeof response.data,
-        dataLength: Array.isArray(response.data) ? response.data.length : 'not an array',
-        sample: response.data?.slice?.(0, 2),
+        dataType: typeof data,
+        dataLength: Array.isArray(data) ? data.length : 'not an array',
+        sample: Array.isArray(data) ? data.slice(0, 2) : null,
       });
-      if (response.success && response.data) {
-        setUploads(response.data as UploadedContent[]);
+      if (response.success && data) {
+        setUploads(data as UploadedContent[]);
       }
     } catch (err: any) {
       console.error('📂 My uploads error:', err);

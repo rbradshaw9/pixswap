@@ -120,18 +120,20 @@ const AdminPage = () => {
 
       const response = await api.get('/admin/media', params);
       
+      const data = response.data as any;
+      
       console.log('📚 Media response:', {
         success: response.success,
-        hasData: !!response.data,
-        contentsLength: response.data?.contents?.length,
-        total: response.data?.pagination?.total,
+        hasData: !!data,
+        contentsLength: data?.contents?.length,
+        total: data?.pagination?.total,
       });
 
-      if (response.success && response.data) {
-        const data = response.data as { contents: MediaContent[]; pagination: { pages: number } };
-        setMedia(data.contents || []);
-        setTotalPages(data.pagination.pages || 1);
-        console.log('📚 Set media state:', data.contents?.length, 'items');
+      if (response.success && data) {
+        const mediaData = data as { contents: MediaContent[]; pagination: { pages: number } };
+        setMedia(mediaData.contents || []);
+        setTotalPages(mediaData.pagination?.pages || 1);
+        console.log('📚 Set media state:', mediaData.contents?.length, 'items');
       } else {
         console.log('❌ No data in response');
       }

@@ -22,6 +22,12 @@ router.get('/stats', getAdminStats);
 // Media library - get all content
 router.get('/media', async (req: any, res: any) => {
   try {
+    console.log('📚 Admin media library request:', {
+      query: req.query,
+      user: req.user?.username,
+      isAdmin: req.user?.isAdmin,
+    });
+
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
@@ -46,6 +52,8 @@ router.get('/media', async (req: any, res: any) => {
       ];
     }
     
+    console.log('📚 Media query:', query);
+    
     const [contents, total] = await Promise.all([
       Content.find(query)
         .sort({ uploadedAt: -1 })
@@ -54,6 +62,13 @@ router.get('/media', async (req: any, res: any) => {
         .lean(),
       Content.countDocuments(query),
     ]);
+    
+    console.log('📚 Media results:', {
+      found: contents.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    });
     
     res.json({
       success: true,
@@ -68,7 +83,8 @@ router.get('/media', async (req: any, res: any) => {
       },
     });
   } catch (error: any) {
-    console.error('Failed to fetch media:', error);
+    console.error('❌ Failed to fetch media:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch media library',

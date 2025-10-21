@@ -113,14 +113,27 @@ const AdminPage = () => {
         params.isNSFW = mediaFilter === 'nsfw';
       }
 
+      console.log('📚 Fetching media with params:', params);
+
       const response = await api.get('/admin/media', params);
+      
+      console.log('📚 Media response:', {
+        success: response.success,
+        hasData: !!response.data,
+        contentsLength: response.data?.contents?.length,
+        total: response.data?.pagination?.total,
+      });
+
       if (response.success && response.data) {
         const data = response.data as { contents: MediaContent[]; pagination: { pages: number } };
         setMedia(data.contents || []);
         setTotalPages(data.pagination.pages || 1);
+        console.log('📚 Set media state:', data.contents?.length, 'items');
+      } else {
+        console.log('❌ No data in response');
       }
     } catch (error) {
-      console.error('Failed to fetch media:', error);
+      console.error('❌ Failed to fetch media:', error);
       toast.error('Failed to load media library');
     } finally {
       setIsLoading(false);

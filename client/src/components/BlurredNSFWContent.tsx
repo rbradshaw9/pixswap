@@ -10,6 +10,9 @@ interface BlurredNSFWContentProps {
 export default function BlurredNSFWContent({ children, isNSFW, className = '' }: BlurredNSFWContentProps) {
   const [isRevealed, setIsRevealed] = useState(false);
 
+  // Debug logging
+  console.log('🔒 BlurredNSFWContent render:', { isNSFW, isRevealed });
+
   if (!isNSFW) {
     // Not NSFW, show directly
     return <>{children}</>;

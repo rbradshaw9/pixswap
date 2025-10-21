@@ -18,7 +18,8 @@ import {
   Eye,
   EyeOff,
   Flame,
-  MessageCircle
+  MessageCircle,
+  Bug
 } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import { useAuthStore } from '@/stores/auth';
@@ -27,6 +28,7 @@ import { Input } from '@/components/ui/Input';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import ProtectedMedia from '@/components/ProtectedMedia';
+import { debug } from '@/lib/debug';
 
 interface User {
   _id: string;
@@ -75,6 +77,7 @@ const AdminPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [debugMode, setDebugMode] = useState(debug.isEnabled);
   const [mediaFilter, setMediaFilter] = useState<'all' | 'sfw' | 'nsfw'>('all');
 
   useEffect(() => {
@@ -257,9 +260,25 @@ const AdminPage = () => {
       {/* Page Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-primary-600" />
-            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Shield className="w-8 h-8 text-primary-600" />
+              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            </div>
+            <button
+              onClick={() => {
+                debug.toggle();
+                setDebugMode(debug.isEnabled);
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                debugMode 
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Bug className="w-4 h-4" />
+              Debug {debugMode ? 'ON' : 'OFF'}
+            </button>
           </div>
         </div>
       </div>

@@ -14,6 +14,7 @@ export interface IUser extends Document {
   isAdmin: boolean;
   lastSeen: Date;
   blockedUsers: Types.ObjectId[];
+  friends: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;

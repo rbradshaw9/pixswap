@@ -2,6 +2,7 @@
 // Hybrid approach: MongoDB for persistence + in-memory cache for speed
 
 import { Content } from '@/models/Content';
+import { UserContentView } from '@/models/UserContentView';
 
 interface ContentEntry {
   id: string;
@@ -110,7 +111,21 @@ class ContentPool {
 
   // Get random content from pool (excluding user's own and already seen)
   async getRandom(userId: string, isNSFW: boolean): Promise<ContentEntry | null> {
-    const seenContent = this.userContent.get(userId) || new Set<string>();
+    // Get seen content from database (last 30 days)
+    let seenContent = this.userContent.get(userId) || new Set<string>();
+    
+    // Load from database if not in memory
+    if (seenContent.size === 0 && this.useDatabase) {
+      try {
+        const seenViews = await UserContentView.find({ userId })
+          .select('contentId')
+          .lean();
+        seenContent = new Set(seenViews.map(v => v.contentId));
+        this.userContent.set(userId, seenContent);
+      } catch (error) {
+        console.error('Failed to load seen content:', error);
+      }
+    }
     
     // Filter available content
     const available = Array.from(this.pool.values()).filter(content => 
@@ -130,9 +145,17 @@ class ContentPool {
         return null;
       }
 
-      // Clear seen list for this user
+      // Clear seen list for this user (both memory and DB)
       seenContent.clear();
       this.userContent.set(userId, seenContent);
+      
+      if (this.useDatabase) {
+        try {
+          await UserContentView.deleteMany({ userId });
+        } catch (error) {
+          console.error('Failed to clear seen content:', error);
+        }
+      }
 
       // Pick random from reset list
       const randomIndex = Math.floor(Math.random() * resetAvailable.length);
@@ -141,8 +164,15 @@ class ContentPool {
       if (!selected) return null;
 
       // Mark as seen
-      seenContent.add(selected.id);
+      await this.markAsSeen(userId, selected.id);
       selected.views++;
+      
+      // Update view count in database
+      if (this.useDatabase) {
+        Content.findByIdAndUpdate(selected.id, { $inc: { views: 1 } }).catch(err => 
+          console.error('Failed to update view count:', err)
+        );
+      }
 
       return selected;
     }
@@ -153,12 +183,41 @@ class ContentPool {
 
     if (!selected) return null;
 
-    // Mark as seen
-    seenContent.add(selected.id);
+    // Mark as seen (memory + database)
+    await this.markAsSeen(userId, selected.id);
     this.userContent.set(userId, seenContent);
     selected.views++;
+    
+    // Update view count in database
+    if (this.useDatabase) {
+      Content.findByIdAndUpdate(selected.id, { $inc: { views: 1 } }).catch(err => 
+        console.error('Failed to update view count:', err)
+      );
+    }
 
     return selected;
+  }
+  
+  // Mark content as seen by user (persisted to database)
+  private async markAsSeen(userId: string, contentId: string): Promise<void> {
+    const seenContent = this.userContent.get(userId) || new Set<string>();
+    seenContent.add(contentId);
+    this.userContent.set(userId, seenContent);
+    
+    if (this.useDatabase) {
+      try {
+        await UserContentView.create({
+          userId,
+          contentId,
+          viewedAt: new Date(),
+        });
+      } catch (error: any) {
+        // Ignore duplicate key errors (already seen)
+        if (error.code !== 11000) {
+          console.error('Failed to save view:', error);
+        }
+      }
+    }
   }
 
   // Get any random content (ignoring user restrictions, for empty pool scenarios)
@@ -307,9 +366,9 @@ class ContentPool {
               isNSFW: doc.isNSFW,
               timestamp: doc.uploadedAt.getTime(),
               views: doc.views,
-              reactions: doc.reactions.length,
+              reactions: doc.reactions,
               comments: doc.comments,
-              savedForever: doc.savedForever,
+              saveForever: doc.savedForever,
               uploadedAt: doc.uploadedAt.getTime(),
             });
           }

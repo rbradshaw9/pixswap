@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap, LogIn, UserPlus, FolderOpen } from 'lucide-react';
+import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap, LogIn, UserPlus, FolderOpen, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -10,7 +10,7 @@ import imageCompression from 'browser-image-compression';
 export default function SwapPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>('');
   const [fileType, setFileType] = useState<'image' | 'video'>('image');
@@ -353,6 +353,13 @@ export default function SwapPage() {
                     <Users className="w-4 h-4" />
                     <span className="hidden sm:inline">{user?.username || 'User'}</span>
                   </span>
+                  <button
+                    onClick={() => logout()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
                 </>
               ) : (
                 <>

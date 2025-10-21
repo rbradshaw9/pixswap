@@ -11,7 +11,8 @@ import {
   XCircle,
   ChevronLeft,
   ChevronRight,
-  UserCog
+  UserCog,
+  LogOut
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { Button } from '@/components/ui/Button';
@@ -42,7 +43,7 @@ interface AdminStats {
 
 const AdminPage = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [search, setSearch] = useState('');
@@ -65,8 +66,9 @@ const AdminPage = () => {
   const fetchStats = async () => {
     try {
       const response = await api.get('/admin/stats');
-      if (response.data.success) {
-        setStats(response.data.data.stats);
+      if (response.success && response.data) {
+        const data = response.data as any;
+        setStats(data.stats as AdminStats);
       }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -80,9 +82,10 @@ const AdminPage = () => {
       if (search) params.search = search;
 
       const response = await api.get('/admin/users', params);
-      if (response.data.success) {
-        setUsers(response.data.data.users);
-        setTotalPages(response.data.data.pagination.pages);
+      if (response.success && response.data) {
+        const data = response.data as { users: User[]; pagination: { pages: number } };
+        setUsers(data.users || []);
+        setTotalPages(data.pagination.pages || 1);
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -95,8 +98,8 @@ const AdminPage = () => {
   const handleToggleBlock = async (userId: string) => {
     try {
       const response = await api.post(`/admin/users/${userId}/toggle-block`);
-      if (response.data.success) {
-        toast.success(response.data.message);
+      if (response.success) {
+        toast.success(response.message || 'User updated');
         fetchUsers();
         fetchStats();
       }
@@ -112,7 +115,7 @@ const AdminPage = () => {
 
     try {
       const response = await api.delete(`/admin/users/${userId}`);
-      if (response.data.success) {
+      if (response.success) {
         toast.success('User deleted successfully');
         fetchUsers();
         fetchStats();
@@ -125,7 +128,7 @@ const AdminPage = () => {
   const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
     try {
       const response = await api.put(`/admin/users/${userId}`, updates);
-      if (response.data.success) {
+      if (response.success) {
         toast.success('User updated successfully');
         setEditingUser(null);
         fetchUsers();
@@ -164,9 +167,15 @@ const AdminPage = () => {
               <Shield className="w-8 h-8 text-primary-600" />
               <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
             </div>
-            <Button onClick={() => navigate('/swap')} variant="outline">
-              Back to App
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button onClick={() => logout()} variant="outline">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+              <Button onClick={() => navigate('/swap')} variant="outline">
+                Back to App
+              </Button>
+            </div>
           </div>
         </div>
       </div>

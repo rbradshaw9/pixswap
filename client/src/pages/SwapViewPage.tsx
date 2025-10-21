@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, SkipForward, UserPlus, ArrowLeft, Sparkles, Send } from 'lucide-react';
+import { Heart, MessageCircle, Share2, SkipForward, UserPlus, ArrowLeft, Sparkles, Send, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -16,7 +16,7 @@ interface Comment {
 export default function SwapViewPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const [content, setContent] = useState<any>(null);
   const [contentUserId, setContentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -230,7 +230,16 @@ export default function SwapViewPage() {
                 PixSwap
               </span>
             </div>
-            <div className="w-24"></div>
+            <div className="w-24 flex justify-end">
+              {isAuthenticated && (
+                <button
+                  onClick={() => logout()}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all text-gray-300 hover:text-white text-sm"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </nav>

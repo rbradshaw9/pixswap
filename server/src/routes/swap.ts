@@ -41,16 +41,17 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
     });
 
     // Get random content from pool (not from same user, matching NSFW preference)
-    const receivedContent = await contentPool.getRandom(userId, isNSFW);
+    let receivedContent = await contentPool.getRandom(userId, isNSFW);
 
+    // If no content available from others, get any random content (even their own or latest)
     if (!receivedContent) {
-      // No content available yet, return waiting state
-      return res.json({
-        success: true,
-        waiting: true,
-        message: 'Your content has been uploaded! Waiting for others to share...',
-        uploadedId: uploadedContent.id,
-      });
+      // Try to get any content regardless of user (for first-time users or empty pool)
+      receivedContent = await contentPool.getAny(isNSFW);
+      
+      // If still nothing, return their own upload as content
+      if (!receivedContent) {
+        receivedContent = uploadedContent;
+      }
     }
 
     // Try to create swap record (optional if DB not connected)

@@ -292,28 +292,16 @@ export default function SwapPage() {
       console.log('[DEBUG] Server response:', response.data);
       if (debugMode) console.log('[DEBUG] Full response:', response);
 
-      if (response.data.success) {
-        if (response.data.content) {
-          if (debugMode) console.log('[DEBUG] Content received, navigating to view');
-          // Got content immediately, navigate to view page
-          const contentParam = encodeURIComponent(JSON.stringify(response.data.content));
-          navigate(`/view?content=${contentParam}`);
-        } else if (response.data.waiting) {
-          if (debugMode) console.log('[DEBUG] Waiting for other users');
-          // No content available yet
-          alert('Your content has been uploaded! Check back soon to see what others have shared.');
-          // Reset form
-          setSelectedFile(null);
-          setPreview('');
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-        }
+      if (response.data.success && response.data.content) {
+        if (debugMode) console.log('[DEBUG] Content received, navigating to view');
+        // Got content, navigate to view page
+        const contentParam = encodeURIComponent(JSON.stringify(response.data.content));
+        navigate(`/view?content=${contentParam}`);
       } else {
         if (debugMode) console.log('[DEBUG] Unexpected response format');
-        // Handle old response format
+        // Handle unexpected response
         console.warn('Unexpected response format:', response.data);
-        setError('Upload succeeded but response format is unexpected. Please refresh and try again.');
+        setError('Upload succeeded but no content received. Please try again.');
       }
     } catch (err: any) {
       console.error('[DEBUG] Upload failed:', err);

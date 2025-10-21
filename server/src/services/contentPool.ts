@@ -91,6 +91,58 @@ class ContentPool {
     return selected;
   }
 
+  // Get any random content (ignoring user restrictions, for empty pool scenarios)
+  // Prioritizes recent content: 24h > 7d > 30d > all time
+  async getAny(isNSFW: boolean): Promise<ContentEntry | null> {
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const oneWeek = 7 * oneDay;
+    const oneMonth = 30 * oneDay;
+
+    // Try to find content from last 24 hours
+    let available = Array.from(this.pool.values()).filter(content => 
+      content.isNSFW === isNSFW && 
+      (now - content.timestamp) <= oneDay
+    );
+
+    // If none, try last 7 days
+    if (available.length === 0) {
+      available = Array.from(this.pool.values()).filter(content => 
+        content.isNSFW === isNSFW && 
+        (now - content.timestamp) <= oneWeek
+      );
+    }
+
+    // If none, try last 30 days
+    if (available.length === 0) {
+      available = Array.from(this.pool.values()).filter(content => 
+        content.isNSFW === isNSFW && 
+        (now - content.timestamp) <= oneMonth
+      );
+    }
+
+    // If still none, get any content matching NSFW filter
+    if (available.length === 0) {
+      available = Array.from(this.pool.values()).filter(content => 
+        content.isNSFW === isNSFW
+      );
+    }
+
+    if (available.length === 0) {
+      return null;
+    }
+
+    // Pick random
+    const randomIndex = Math.floor(Math.random() * available.length);
+    const selected = available[randomIndex];
+
+    if (selected) {
+      selected.views++;
+    }
+
+    return selected || null;
+  }
+
   // Get content by ID
   async getById(id: string): Promise<ContentEntry | null> {
     return this.pool.get(id) || null;

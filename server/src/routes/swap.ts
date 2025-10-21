@@ -13,7 +13,14 @@ router.post('/queue', upload.single('image'), async (req: any, res: any) => {
     // Generate temp user ID if not authenticated
     const userId = req.user?._id?.toString() || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const isNSFW = req.body.isNSFW === 'true';
-    const mediaUrl = req.file?.path || req.file?.location;
+    
+    // Get media URL - use relative path for uploads
+    let mediaUrl = req.file?.path || req.file?.location;
+    
+    // Convert absolute path to relative path (uploads/filename.jpg)
+    if (mediaUrl && mediaUrl.includes('uploads')) {
+      mediaUrl = mediaUrl.substring(mediaUrl.indexOf('uploads'));
+    }
 
     if (!mediaUrl) {
       return res.status(400).json({ message: 'Media file is required' });

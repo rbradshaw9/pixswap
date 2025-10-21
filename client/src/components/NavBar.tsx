@@ -115,7 +115,7 @@ export default function NavBar({
               <>
                 <div className={`hidden sm:flex items-center gap-2 ${textClasses}`}>
                   <Users className="w-4 h-4" />
-                  <span className="font-medium">{user?.username}</span>
+                  <span className="font-medium">{user?.displayName || user?.username}</span>
                 </div>
                 <button
                   onClick={() => logout()}

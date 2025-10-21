@@ -4,6 +4,7 @@ export type ContentFilter = 'sfw' | 'all' | 'nsfw';
 export interface User {
   _id: string;
   username: string;
+  displayName?: string;
   email: string;
   avatar?: string;
   bio?: string;

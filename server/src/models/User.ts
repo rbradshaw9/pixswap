@@ -12,6 +12,12 @@ const userSchema = new Schema<IUser>({
     maxlength: [30, 'Username cannot exceed 30 characters'],
     match: [/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'],
   },
+  displayName: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'Display name cannot exceed 50 characters'],
+    default: '',
+  },
   email: {
     type: String,
     required: [true, 'Email is required'],

@@ -11,10 +11,13 @@ import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, setUser } = useAuthStore();
   const [contentFilter, setContentFilter] = useState<ContentFilter>('sfw');
+  const [displayName, setDisplayName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [hasProfileChanges, setHasProfileChanges] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -22,15 +25,47 @@ export default function SettingsPage() {
       return;
     }
 
-    // Load user's current filter
+    // Load user's current settings
     if (user?.nsfwContentFilter) {
       setContentFilter(user.nsfwContentFilter as ContentFilter);
+    }
+    if (user?.displayName) {
+      setDisplayName(user.displayName);
     }
   }, [isAuthenticated, navigate, user]);
 
   const handleFilterChange = (filter: ContentFilter) => {
     setContentFilter(filter);
     setHasChanges(true);
+  };
+
+  const handleDisplayNameChange = (value: string) => {
+    setDisplayName(value);
+    setHasProfileChanges(true);
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const response = await api.patch('/user/profile', { displayName });
+      if (response.success && response.data) {
+        const data = response.data as any;
+        // Update the user in the auth store
+        if (user) {
+          setUser({
+            ...user,
+            displayName: data.displayName,
+          });
+        }
+        toast.success('Profile updated!');
+        setHasProfileChanges(false);
+      }
+    } catch (err: any) {
+      console.error('Failed to update profile:', err);
+      toast.error(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleSave = async () => {
@@ -69,7 +104,74 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* Settings Card */}
+        {/* Profile Settings Card */}
+        <div className="bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 p-8 shadow-2xl mb-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white mb-2">Profile</h2>
+            <p className="text-gray-300">
+              Customize how your name appears to other users
+            </p>
+          </div>
+
+          {/* Username (read-only) */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Username
+            </label>
+            <input
+              type="text"
+              value={user?.username || ''}
+              disabled
+              className="w-full px-4 py-3 bg-black/20 border border-white/20 rounded-xl text-white text-sm focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-400 mt-1">Your username cannot be changed</p>
+          </div>
+
+          {/* Display Name */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Display Name <span className="text-gray-500">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => handleDisplayNameChange(e.target.value)}
+              placeholder="Enter a display name or nickname"
+              maxLength={50}
+              className="w-full px-4 py-3 bg-black/20 border border-white/20 rounded-xl text-white text-sm focus:outline-none focus:border-purple-400/50 placeholder-gray-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              This will be shown instead of your username ({displayName.length}/50 characters)
+            </p>
+          </div>
+
+          {/* Save Profile Button */}
+          <Button
+            onClick={handleSaveProfile}
+            disabled={!hasProfileChanges || savingProfile}
+            className={`w-full py-3 font-semibold ${
+              hasProfileChanges
+                ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                : 'bg-gray-600 cursor-not-allowed'
+            }`}
+          >
+            {savingProfile ? (
+              <>
+                <Sparkles className="w-5 h-5 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : hasProfileChanges ? (
+              <>
+                <Save className="w-5 h-5 mr-2" />
+                Save Profile
+              </>
+            ) : (
+              'No Changes'
+            )}
+          </Button>
+        </div>
+
+        {/* Content Filter Settings Card */}
         <div className="bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 p-8 shadow-2xl">
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-2">Content Filter</h2>

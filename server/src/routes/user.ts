@@ -1,11 +1,62 @@
 import { Router } from 'express';
-import { protect, optionalAuth } from '@/middleware/auth';
-import { User, Content, SwapComment } from '@/models';
+import { optionalAuth, protect } from '@/middleware/auth';
+import { User, Content, ContentLike } from '@/models';
+import { contentPool } from '@/services/contentPool';
 
 const router = Router();
 
-// User profile routes
-router.get('/profile/:username', optionalAuth, async (req: any, res: any) => {
+// Update user profile (requires auth)
+router.patch('/profile', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id;
+    const { displayName } = req.body;
+
+    // Validate displayName if provided
+    if (displayName !== undefined) {
+      if (displayName.length > 50) {
+        return res.status(400).json({
+          success: false,
+          message: 'Display name cannot exceed 50 characters',
+        });
+      }
+    }
+
+    // Update user
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { displayName },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        _id: user._id,
+        username: user.username,
+        displayName: user.displayName,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+      },
+    });
+  } catch (error: any) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update profile',
+    });
+  }
+});
+
+// Get current user
+router.get('/me', protect, async (req: any, res: any) => {
   try {
     const { username } = req.params;
     const currentUserId = req.user?._id?.toString();

@@ -194,7 +194,7 @@ export default function MyUploadsPage() {
             My Uploads
           </h1>
           <p className="text-gray-400">
-            {user?.username}'s content • {uploads.length} upload{uploads.length !== 1 ? 's' : ''}
+            {user?.displayName || user?.username}'s content • {uploads.length} upload{uploads.length !== 1 ? 's' : ''}
           </p>
         </div>
 

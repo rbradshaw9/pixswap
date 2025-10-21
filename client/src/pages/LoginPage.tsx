@@ -20,6 +20,10 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, isLoading } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
+  
+  // Debug mode
+  const urlParams = new URLSearchParams(window.location.search);
+  const debug = urlParams.get('debug') === 'true';
 
   const {
     register,
@@ -31,12 +35,29 @@ const LoginPage: React.FC = () => {
 
   const onSubmit = async (data: LoginForm) => {
     try {
+      if (debug) {
+        console.log('🐛 [DEBUG] Starting login process...');
+        console.log('🐛 [DEBUG] Email:', data.email);
+        console.log('🐛 [DEBUG] API URL:', import.meta.env.VITE_API_URL);
+      }
+      
       setError(null);
       await login(data);
+      
+      if (debug) {
+        console.log('🐛 [DEBUG] Login successful, navigating to /swap');
+      }
+      
       toast.success('Welcome back!');
-      navigate('/feed');
+      navigate('/swap');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      
+      if (debug) {
+        console.error('🐛 [DEBUG] Login failed:', err);
+        console.error('🐛 [DEBUG] Error message:', errorMessage);
+      }
+      
       setError(errorMessage);
       toast.error(errorMessage);
     }

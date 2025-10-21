@@ -7,6 +7,8 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
     const { username, email, password, bio, interests }: ISignupRequest = req.body;
 
+    console.log('📝 Signup attempt:', { username, email, hasBio: !!bio, hasInterests: !!interests });
+
     // Check if user already exists
     const existingUser = await User.findOne({
       $or: [{ email }, { username }],
@@ -20,6 +22,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
           : 'Username is already taken',
         timestamp: new Date(),
       };
+      console.log('❌ User already exists:', response.message);
       res.status(400).json(response);
       return;
     }
@@ -32,6 +35,8 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       bio: bio || '',
       interests: interests || [],
     });
+
+    console.log('✅ User created:', { id: user._id, username: user.username });
 
     // Generate token
     const token = generateToken(user._id.toString(), user.username);
@@ -51,11 +56,13 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       timestamp: new Date(),
     };
 
+    console.log('✅ Signup successful');
     res.status(201).json(response);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ Signup error:', error);
     const response: IApiResponse = {
       success: false,
-      message: 'Error creating user',
+      message: error.message || 'Error creating user',
       timestamp: new Date(),
     };
     res.status(500).json(response);

@@ -20,7 +20,6 @@ const signupSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  bio: z.string().max(160, 'Bio cannot exceed 160 characters').optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -30,6 +29,10 @@ const SignupPage: React.FC = () => {
   const navigate = useNavigate();
   const { signup, isLoading } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
+  
+  // Debug mode
+  const urlParams = new URLSearchParams(window.location.search);
+  const debug = urlParams.get('debug') === 'true';
 
   const {
     register,
@@ -41,12 +44,29 @@ const SignupPage: React.FC = () => {
 
   const onSubmit = async (data: SignupForm) => {
     try {
+      if (debug) {
+        console.log('🐛 [DEBUG] Starting signup process...');
+        console.log('🐛 [DEBUG] Form data:', { ...data, password: '[REDACTED]', confirmPassword: '[REDACTED]' });
+        console.log('🐛 [DEBUG] API URL:', import.meta.env.VITE_API_URL);
+      }
+      
       setError(null);
       await signup(data);
+      
+      if (debug) {
+        console.log('🐛 [DEBUG] Signup successful, navigating to /swap');
+      }
+      
       toast.success('Account created successfully!');
-      navigate('/feed');
+      navigate('/swap');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Signup failed';
+      
+      if (debug) {
+        console.error('🐛 [DEBUG] Signup failed:', err);
+        console.error('🐛 [DEBUG] Error message:', errorMessage);
+      }
+      
       setError(errorMessage);
       toast.error(errorMessage);
     }
@@ -97,14 +117,6 @@ const SignupPage: React.FC = () => {
               placeholder="Confirm your password"
               error={errors.confirmPassword?.message}
               {...register('confirmPassword')}
-            />
-
-            <Input
-              label="Bio (Optional)"
-              type="text"
-              placeholder="Tell us about yourself"
-              error={errors.bio?.message}
-              {...register('bio')}
             />
 
             <Button

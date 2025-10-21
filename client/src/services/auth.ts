@@ -3,18 +3,58 @@ import { apiService } from './api';
 
 export class AuthService {
   async signup(data: SignupForm): Promise<AuthResponse> {
+    const debug = new URLSearchParams(window.location.search).get('debug') === 'true';
+    
+    if (debug) {
+      console.log('🔐 [DEBUG] Signup request:', { ...data, password: '[REDACTED]', confirmPassword: '[REDACTED]' });
+    } else {
+      console.log('🔐 Signup request:', { ...data, password: '[REDACTED]' });
+    }
+    
     const response = await apiService.post<AuthResponse>('/auth/signup', data);
+    
+    if (debug) {
+      console.log('🔐 [DEBUG] Signup response:', response);
+      console.log('🔐 [DEBUG] Token received:', response.data?.token ? 'Yes' : 'No');
+      console.log('🔐 [DEBUG] User data:', response.data?.user);
+    } else {
+      console.log('🔐 Signup response:', response);
+    }
+    
     if (response.success && response.data) {
       apiService.setToken(response.data.token);
+      if (debug) {
+        console.log('🔐 [DEBUG] Token saved to localStorage');
+      }
       return response.data;
     }
     throw new Error(response.message || 'Signup failed');
   }
 
   async login(data: LoginForm): Promise<AuthResponse> {
+    const debug = new URLSearchParams(window.location.search).get('debug') === 'true';
+    
+    if (debug) {
+      console.log('🔐 [DEBUG] Login request:', { email: data.email, password: '[REDACTED]' });
+    } else {
+      console.log('🔐 Login request:', { email: data.email });
+    }
+    
     const response = await apiService.post<AuthResponse>('/auth/login', data);
+    
+    if (debug) {
+      console.log('🔐 [DEBUG] Login response:', response);
+      console.log('🔐 [DEBUG] Token received:', response.data?.token ? 'Yes' : 'No');
+      console.log('🔐 [DEBUG] User data:', response.data?.user);
+    } else {
+      console.log('🔐 Login response:', response);
+    }
+    
     if (response.success && response.data) {
       apiService.setToken(response.data.token);
+      if (debug) {
+        console.log('🔐 [DEBUG] Token saved to localStorage');
+      }
       return response.data;
     }
     throw new Error(response.message || 'Login failed');

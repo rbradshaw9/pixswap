@@ -54,8 +54,21 @@ class ApiService {
 
   // Generic POST request
   async post<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    const response = await this.api.post(url, data);
-    return response.data;
+    try {
+      console.log('📡 POST request:', { url, data });
+      const response = await this.api.post(url, data);
+      console.log('📡 POST response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ POST error:', {
+        url,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+      throw error;
+    }
   }
 
   // Generic PUT request

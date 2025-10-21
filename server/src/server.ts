@@ -100,15 +100,16 @@ setupSocket(io);
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 const startServer = async () => {
   try {
-    // Start server first
-    server.listen(PORT, () => {
+    // Start server first (listen on all interfaces for Railway)
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📡 Socket.IO ready for connections`);
+      console.log(`🏥 Health check available at /health`);
     });
 
     // Connect to MongoDB (async, non-blocking)

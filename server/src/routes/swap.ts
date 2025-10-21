@@ -931,4 +931,93 @@ router.get('/friends', protect, async (req: any, res: any) => {
   }
 });
 
+// Update content caption (requires auth)
+router.patch('/content/:contentId/caption', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    const { contentId } = req.params;
+    const { caption } = req.body;
+
+    if (caption && caption.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Caption cannot exceed 500 characters',
+      });
+    }
+
+    await contentPool.updateCaption(contentId, userId, caption);
+
+    res.json({
+      success: true,
+      message: 'Caption updated successfully',
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Update caption error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update caption',
+      timestamp: new Date(),
+    });
+  }
+});
+
+// Update content NSFW status (requires auth)
+router.patch('/content/:contentId/nsfw', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    const { contentId } = req.params;
+    const { isNSFW } = req.body;
+
+    await contentPool.updateNSFW(contentId, userId, isNSFW);
+
+    res.json({
+      success: true,
+      message: `Content marked as ${isNSFW ? 'NSFW' : 'Safe'}`,
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Update NSFW error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update NSFW status',
+      timestamp: new Date(),
+    });
+  }
+});
+
+// Flag content as inappropriate (requires auth)
+router.post('/content/:contentId/flag', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    const username = req.user.username;
+    const { contentId } = req.params;
+    const { reason } = req.body;
+
+    // Create a flag record (you might want to create a ContentFlag model)
+    await SwapComment.create({
+      contentId,
+      author: userId,
+      username,
+      type: 'flag',
+      text: reason || 'Flagged as inappropriate',
+    });
+
+    console.log('🚩 Content flagged:', { contentId, username, reason });
+
+    res.json({
+      success: true,
+      message: 'Content flagged for review',
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Flag content error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to flag content',
+      timestamp: new Date(),
+    });
+  }
+});
+
 export default router;

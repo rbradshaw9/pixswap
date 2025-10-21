@@ -514,6 +514,54 @@ class ContentPool {
     }
   }
 
+  // Update caption (only owner can modify)
+  async updateCaption(contentId: string, userId: string, caption: string): Promise<void> {
+    const content = this.pool.get(contentId);
+    
+    if (!content) {
+      throw new Error('Content not found');
+    }
+    
+    if (content.userId !== userId) {
+      throw new Error('Unauthorized to modify this content');
+    }
+    
+    content.caption = caption;
+    
+    // Update in database
+    if (this.useDatabase) {
+      try {
+        await Content.findByIdAndUpdate(contentId, { caption });
+      } catch (error) {
+        console.error('Failed to update caption in database:', error);
+      }
+    }
+  }
+
+  // Update NSFW status (only owner can modify)
+  async updateNSFW(contentId: string, userId: string, isNSFW: boolean): Promise<void> {
+    const content = this.pool.get(contentId);
+    
+    if (!content) {
+      throw new Error('Content not found');
+    }
+    
+    if (content.userId !== userId) {
+      throw new Error('Unauthorized to modify this content');
+    }
+    
+    content.isNSFW = isNSFW;
+    
+    // Update in database
+    if (this.useDatabase) {
+      try {
+        await Content.findByIdAndUpdate(contentId, { isNSFW });
+      } catch (error) {
+        console.error('Failed to update NSFW status in database:', error);
+      }
+    }
+  }
+
   // Clean up old content (>24 hours)
   cleanup() {
     const now = Date.now();

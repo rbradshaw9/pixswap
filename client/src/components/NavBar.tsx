@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, LogOut, Home, Upload, FolderOpen, Shield, Users } from 'lucide-react';
+import { Home, Upload, FolderOpen, Users, LogOut, Shield, Sparkles, Heart } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 
 interface NavBarProps {
@@ -81,6 +81,13 @@ export default function NavBar({
                 >
                   <FolderOpen className="w-4 h-4" />
                   <span>My Uploads</span>
+                </Link>
+                <Link
+                  to="/liked-posts"
+                  className={`flex items-center gap-2 ${textClasses} transition-colors`}
+                >
+                  <Heart className="w-4 h-4" />
+                  <span>Liked</span>
                 </Link>
                 {user?.isAdmin && (
                   <Link

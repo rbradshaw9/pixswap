@@ -6,6 +6,8 @@ export interface ISwapComment extends Document {
   username: string; // Denormalized for faster access
   text: string;
   type: 'like' | 'comment';
+  parentId?: string; // For threaded replies
+  likes: number; // Count of likes on this comment
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +42,15 @@ const swapCommentSchema = new Schema<ISwapComment>({
     required: true,
     default: 'comment',
   },
+  parentId: {
+    type: String,
+    default: null,
+    index: true,
+  },
+  likes: {
+    type: Number,
+    default: 0,
+  },
 }, {
   timestamps: true,
 });
@@ -48,5 +59,7 @@ const swapCommentSchema = new Schema<ISwapComment>({
 swapCommentSchema.index({ contentId: 1, createdAt: -1 });
 swapCommentSchema.index({ author: 1, contentId: 1 });
 swapCommentSchema.index({ type: 1, contentId: 1 });
+swapCommentSchema.index({ parentId: 1 }); // For fetching replies
+swapCommentSchema.index({ contentId: 1, parentId: 1, createdAt: -1 }); // For hierarchical comments
 
 export const SwapComment = model<ISwapComment>('SwapComment', swapCommentSchema);

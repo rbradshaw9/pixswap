@@ -11,6 +11,7 @@ import SwapChatPage from '@/pages/SwapChatPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import MyUploadsPage from '@/pages/MyUploadsPage';
+import LikedPostsPage from '@/pages/LikedPostsPage';
 import AdminPage from '@/pages/AdminPage';
 
 // Components
@@ -40,6 +41,7 @@ function App() {
           <Route path="/swap" element={<SwapPage />} />
           <Route path="/view" element={<SwapViewPage />} />
           <Route path="/my-uploads" element={<MyUploadsPage />} />
+          <Route path="/liked-posts" element={<LikedPostsPage />} />
           <Route path="/swap/:swapId" element={<SwapChatPage />} />
           <Route path="/admin" element={<AdminPage />} />
           

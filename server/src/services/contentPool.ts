@@ -278,12 +278,52 @@ class ContentPool {
 
   // Get all content for a specific user
   async getUserContent(userId: string): Promise<ContentEntry[]> {
-    const userContent = Array.from(this.pool.values()).filter(
+    // Get from in-memory pool
+    const memoryContent = Array.from(this.pool.values()).filter(
       content => content.userId === userId
     );
     
+    // Also check database if enabled
+    if (this.useDatabase) {
+      try {
+        const dbContent = await Content.find({ userId }).sort({ uploadedAt: -1 }).lean();
+        
+        // Merge database content with memory, avoiding duplicates
+        const allContent = new Map<string, ContentEntry>();
+        
+        // Add memory content first (most up-to-date)
+        memoryContent.forEach(c => allContent.set(c.id, c));
+        
+        // Add database content if not already in memory
+        dbContent.forEach(doc => {
+          const id = doc._id.toString();
+          if (!allContent.has(id)) {
+            allContent.set(id, {
+              id,
+              userId: doc.userId,
+              username: doc.username,
+              mediaUrl: doc.mediaUrl,
+              mediaType: doc.mediaType,
+              isNSFW: doc.isNSFW,
+              timestamp: doc.uploadedAt.getTime(),
+              views: doc.views,
+              reactions: doc.reactions.length,
+              comments: doc.comments,
+              savedForever: doc.savedForever,
+              uploadedAt: doc.uploadedAt.getTime(),
+            });
+          }
+        });
+        
+        return Array.from(allContent.values()).sort((a, b) => b.timestamp - a.timestamp);
+      } catch (error) {
+        console.error('Failed to fetch user content from database:', error);
+        // Fall back to memory content only
+      }
+    }
+    
     // Sort by most recent first
-    return userContent.sort((a, b) => b.timestamp - a.timestamp);
+    return memoryContent.sort((a, b) => b.timestamp - a.timestamp);
   }
 
   // Delete content (only owner can delete)

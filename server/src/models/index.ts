@@ -7,3 +7,4 @@ export { ChatRoom } from './ChatRoom';
 export { Swap } from './Swap';
 export { Report } from './Report';
 export { Content } from './Content';
+export { CommentLike } from './CommentLike';

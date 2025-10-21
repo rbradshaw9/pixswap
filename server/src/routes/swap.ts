@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { upload } from '@/middleware/upload';
 import { optionalAuth, protect } from '@/middleware/auth';
-import { Swap, SwapComment } from '@/models';
+import { Swap, SwapComment, CommentLike } from '@/models';
 import { SwapStatus } from '@/types';
 import { contentPool } from '@/services/contentPool';
 import { getIO } from '@/socket';
@@ -266,6 +266,57 @@ router.get('/my-uploads', protect, async (req: any, res: any) => {
   }
 });
 
+// Get user's liked posts (requires auth)
+router.get('/liked-posts', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    console.log('❤️ Fetching liked posts for user:', userId);
+    
+    // Find all likes by this user
+    const userLikes = await SwapComment.find({
+      author: userId,
+      type: 'like',
+    }).sort({ createdAt: -1 }).lean();
+    
+    // Get the content for each like
+    const contentIds = userLikes.map(like => like.contentId);
+    const likedContent = await Content.find({ 
+      _id: { $in: contentIds }
+    }).lean();
+    
+    // Map likes to content with likedAt timestamp
+    const likedPosts = likedContent.map(content => {
+      const like = userLikes.find(l => l.contentId === content._id.toString());
+      return {
+        id: content._id.toString(),
+        mediaUrl: content.mediaUrl,
+        mediaType: content.mediaType,
+        username: content.username,
+        uploadedAt: content.uploadedAt.getTime(),
+        views: content.views,
+        isNSFW: content.isNSFW,
+        likedAt: like?.createdAt ? new Date(like.createdAt).getTime() : Date.now(),
+        comments: content.comments,
+      };
+    });
+    
+    console.log('❤️ Found', likedPosts.length, 'liked posts');
+
+    res.json({
+      success: true,
+      data: likedPosts,
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Get liked posts error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to fetch liked posts',
+      timestamp: new Date(),
+    });
+  }
+});
+
 // Delete content (requires auth)
 router.delete('/content/:contentId', protect, async (req: any, res: any) => {
   try {
@@ -421,17 +472,35 @@ router.post('/content/:contentId/like', protect, async (req: any, res: any) => {
   }
 });
 
-// Get comments for content
+// Get comments for content with hierarchical structure
 router.get('/content/:contentId/comments', async (req: any, res: any) => {
   try {
     const { contentId } = req.params;
 
-    const comments = await SwapComment.find({
+    // Get all comments (including replies)
+    const allComments = await SwapComment.find({
       contentId,
       type: 'comment',
     })
       .sort({ createdAt: -1 })
-      .limit(100);
+      .limit(200)
+      .lean();
+
+    // Separate top-level comments and replies
+    const topLevelComments = allComments.filter(c => !c.parentId);
+    const replies = allComments.filter(c => c.parentId);
+
+    // Build hierarchical structure
+    const commentsWithReplies = topLevelComments.map(comment => {
+      const commentReplies = replies.filter(r => r.parentId === comment._id.toString());
+      return {
+        ...comment,
+        replies: commentReplies.sort((a, b) => 
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        ),
+        replyCount: commentReplies.length,
+      };
+    });
 
     const likes = await SwapComment.countDocuments({
       contentId,
@@ -441,9 +510,10 @@ router.get('/content/:contentId/comments', async (req: any, res: any) => {
     res.json({
       success: true,
       data: {
-        comments,
+        comments: commentsWithReplies,
         likes,
-        total: comments.length,
+        total: commentsWithReplies.length,
+        totalWithReplies: allComments.length,
       },
       timestamp: new Date(),
     });
@@ -452,6 +522,118 @@ router.get('/content/:contentId/comments', async (req: any, res: any) => {
     res.status(500).json({ 
       success: false,
       message: error.message || 'Failed to fetch comments',
+      timestamp: new Date(),
+    });
+  }
+});
+
+// Reply to a comment
+router.post('/content/:contentId/comment/:commentId/reply', protect, async (req: any, res: any) => {
+  try {
+    const { contentId, commentId } = req.params;
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reply text is required',
+        timestamp: new Date(),
+      });
+    }
+
+    // Verify parent comment exists
+    const parentComment = await SwapComment.findById(commentId);
+    if (!parentComment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Parent comment not found',
+        timestamp: new Date(),
+      });
+    }
+
+    // Create reply with parentId
+    const reply = await SwapComment.create({
+      contentId,
+      author: req.user._id,
+      username: req.user.username,
+      text: text.trim(),
+      type: 'comment',
+      parentId: commentId,
+      likes: 0,
+    });
+
+    // Update content pool with reply count
+    await contentPool.addComment(contentId);
+
+    res.json({
+      success: true,
+      data: { reply },
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Reply error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to post reply',
+      timestamp: new Date(),
+    });
+  }
+});
+
+// Like/unlike a comment
+router.post('/content/:contentId/comment/:commentId/like', protect, async (req: any, res: any) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user._id;
+
+    // Check if comment exists
+    const comment = await SwapComment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found',
+        timestamp: new Date(),
+      });
+    }
+
+    // Check if user already liked this comment
+    const existingLike = await CommentLike.findOne({
+      commentId,
+      userId,
+    });
+
+    let liked: boolean;
+
+    if (existingLike) {
+      // Unlike - remove like and decrement counter
+      await CommentLike.deleteOne({ _id: existingLike._id });
+      await SwapComment.findByIdAndUpdate(commentId, {
+        $inc: { likes: -1 }
+      });
+      liked = false;
+    } else {
+      // Like - create like and increment counter
+      await CommentLike.create({
+        commentId,
+        userId,
+        username: req.user.username,
+      });
+      await SwapComment.findByIdAndUpdate(commentId, {
+        $inc: { likes: 1 }
+      });
+      liked = true;
+    }
+
+    res.json({
+      success: true,
+      data: { liked },
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Like comment error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to like comment',
       timestamp: new Date(),
     });
   }

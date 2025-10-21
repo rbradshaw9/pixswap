@@ -29,7 +29,8 @@ export default function SwapViewPage() {
   const [isNSFW, setIsNSFW] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [viewsCount, setViewsCount] = useState(0);
-  const [reactionsCount, setReactionsCount] = useState(0);
+  // Reactions feature removed for v1
+  // const [reactionsCount, setReactionsCount] = useState(0);
 
   useEffect(() => {
     const contentData = searchParams.get('content');
@@ -39,7 +40,7 @@ export default function SwapViewPage() {
         setContent(parsedContent);
         setContentUserId(parsedContent.userId || null);
         setViewsCount(parsedContent.views || 0);
-        setReactionsCount(parsedContent.reactions || 0);
+        // Reactions feature removed for v1
         fetchComments(parsedContent.id);
         // Track view
         trackView(parsedContent.id);
@@ -71,16 +72,7 @@ export default function SwapViewPage() {
     }
   };
 
-  const handleReaction = async () => {
-    if (!content) return;
-    try {
-      await api.post(`/swap/${content.id}/react`, { type: 'reaction' });
-      setReactionsCount(prev => prev + 1);
-      toast.success('🎉 Reaction added!');
-    } catch (err) {
-      console.error('Failed to react:', err);
-    }
-  };
+  // Removed non-functional reaction feature for v1
 
   const handleShare = async () => {
     if (!content) return;
@@ -215,7 +207,7 @@ export default function SwapViewPage() {
         setContent(newContent);
         setContentUserId(newContent.userId || null);
         setViewsCount(newContent.views || 0);
-        setReactionsCount(newContent.reactions || 0);
+        // Reactions feature removed for v1
         setLiked(false);
         setComment('');
         setComments([]);
@@ -398,16 +390,7 @@ export default function SwapViewPage() {
                     <span>Views:</span>
                     <span className="text-white font-medium">{viewsCount}</span>
                   </p>
-                  <p className="flex justify-between">
-                    <span>Reactions:</span>
-                    <span className="text-white font-medium">{reactionsCount}</span>
-                  </p>
-                  <button
-                    onClick={handleReaction}
-                    className="w-full mt-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 text-white text-sm font-medium transition-all"
-                  >
-                    🎉 React
-                  </button>
+                  {/* Reactions feature removed for v1 */}
                 </div>
               </div>
 

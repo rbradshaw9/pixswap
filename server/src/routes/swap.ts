@@ -385,7 +385,7 @@ router.post('/content/:contentId/like', protect, async (req: any, res: any) => {
       
       res.json({
         success: true,
-        liked: false,
+        data: { liked: false },
         message: 'Like removed',
         timestamp: new Date(),
       });
@@ -406,7 +406,7 @@ router.post('/content/:contentId/like', protect, async (req: any, res: any) => {
 
       res.json({
         success: true,
-        liked: true,
+        data: { liked: true },
         message: 'Content liked',
         timestamp: new Date(),
       });

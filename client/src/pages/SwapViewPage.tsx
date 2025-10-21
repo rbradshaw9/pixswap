@@ -80,6 +80,36 @@ export default function SwapViewPage() {
     }
   };
 
+  const handleShare = async () => {
+    if (!content) return;
+    
+    const shareUrl = `${window.location.origin}/view?content=${encodeURIComponent(JSON.stringify(content))}`;
+    
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Check out this content on PixSwap',
+          url: shareUrl,
+        });
+        toast.success('Shared!');
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied to clipboard!');
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Share failed:', err);
+        // Fallback: copy to clipboard
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success('Link copied to clipboard!');
+        } catch {
+          toast.error('Failed to share');
+        }
+      }
+    }
+  };
+
   const handleLike = async () => {
     if (!isAuthenticated) {
       toast.error('Please login to like content');
@@ -90,13 +120,13 @@ export default function SwapViewPage() {
     if (!content) return;
 
     try {
-      const axiosInstance = api.getInstance();
-      const response = await axiosInstance.post(`/swap/content/${content.id}/like`);
-      if (response.data.success) {
-        const data = response.data.data as { liked: boolean };
-        setLiked(data.liked);
-        setLikesCount(prev => data.liked ? prev + 1 : prev - 1);
-        toast.success(data.liked ? '❤️ Liked!' : 'Like removed');
+      const response = await api.post(`/swap/content/${content.id}/like`);
+      if (response.success) {
+        const data = response.data as any;
+        const wasLiked = data?.liked ?? !liked;
+        setLiked(wasLiked);
+        setLikesCount(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1));
+        toast.success(wasLiked ? '❤️ Liked!' : 'Like removed');
       }
     } catch (err: any) {
       console.error('Failed to like:', err);
@@ -133,7 +163,7 @@ export default function SwapViewPage() {
     }
   };
 
-  const handleFriend = async () => {
+  const handleFriendRequest = async () => {
     if (!isAuthenticated) {
       toast.error('Please login to send friend requests');
       navigate('/login');
@@ -148,17 +178,23 @@ export default function SwapViewPage() {
       return;
     }
 
-    try {
-      const axiosInstance = api.getInstance();
-      await axiosInstance.post(`/swap/${content.id}/friend`, {
-        friendUserId: contentUserId,
-        message: 'Friend request',
-      });
+    // Check if trying to friend yourself
+    if (contentUserId === user?._id) {
+      toast.error('You cannot friend yourself');
+      return;
+    }
 
-      toast.success('Friend request sent! 👋');
-    } catch (err) {
+    try {
+      const response = await api.post(`/swap/${content.id}/friend`, {
+        friendUserId: contentUserId,
+      });
+      
+      if (response.success) {
+        toast.success('Friend request sent! 👋');
+      }
+    } catch (err: any) {
       console.error('Failed to send friend request:', err);
-      toast.error('Failed to send friend request');
+      toast.error(err.response?.data?.message || 'Failed to send friend request');
     }
   };
 
@@ -280,9 +316,9 @@ export default function SwapViewPage() {
                       <span className="font-medium">{likesCount > 0 ? likesCount : (liked ? 'Liked' : 'Like')}</span>
                     </button>
 
-                    {contentUserId && !contentUserId.startsWith('temp-') && (
+                    {contentUserId && !contentUserId.startsWith('temp-') && contentUserId !== user?._id && (
                       <button
-                        onClick={handleFriend}
+                        onClick={handleFriendRequest}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all"
                       >
                         <UserPlus className="w-5 h-5" />
@@ -290,7 +326,10 @@ export default function SwapViewPage() {
                       </button>
                     )}
 
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all">
+                    <button 
+                      onClick={handleShare}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all"
+                    >
                       <Share2 className="w-5 h-5" />
                       <span className="font-medium hidden sm:inline">Share</span>
                     </button>

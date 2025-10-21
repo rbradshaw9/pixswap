@@ -218,7 +218,7 @@ export default function SwapPage() {
         if (debugMode) console.log('[DEBUG] Starting image compression', { originalSize: file.size });
         
         const options = {
-          maxSizeMB: 0.5, // 500KB max
+          maxSizeMB: 2.0, // 2MB max for better quality
           maxWidthOrHeight: 2048, // Max dimension
           useWebWorker: true,
           maxIteration: 10, // Limit iterations

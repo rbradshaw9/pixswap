@@ -26,8 +26,7 @@ const storage = new CloudinaryStorage({
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov'],
       resource_type: resourceType,
       public_id: `${Date.now()}-${Math.round(Math.random() * 1E9)}`,
-      // Strip all metadata (EXIF, GPS, etc.) for privacy
-      metadata: false,
+      // Cloudinary strips EXIF metadata by default
     };
   },
 });

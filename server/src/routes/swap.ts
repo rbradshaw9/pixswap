@@ -27,7 +27,10 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
     
     // Get media URL from Cloudinary or fallback to local path
     let mediaUrl = (req.file as any)?.path; // Cloudinary returns full URL in path
-    const cloudinaryId = (req.file as any)?.filename; // Cloudinary returns public_id in filename
+    // Cloudinary returns public_id in filename - ensure it has PixSwap/ prefix
+    const cloudinaryId = (req.file as any)?.filename?.includes('PixSwap/') 
+      ? (req.file as any)?.filename 
+      : `PixSwap/${(req.file as any)?.filename}`;
     
     if (!mediaUrl || !req.file) {
       return res.status(400).json({ 

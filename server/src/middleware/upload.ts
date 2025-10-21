@@ -1,4 +1,4 @@
-import multer from 'multer';
+import multer, { StorageEngine } from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { Request } from 'express';
@@ -10,18 +10,18 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Configure storage
-const storage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: any) => {
+const storage: StorageEngine = multer.diskStorage({
+  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
     cb(null, uploadsDir);
   },
-  filename: (req: Request, file: Express.Multer.File, cb: any) => {
+  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   },
 });
 
 // File filter for images only
-const fileFilter = (req: Request, file: Express.Multer.File, cb: any) => {
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);

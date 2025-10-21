@@ -64,9 +64,10 @@ const userSchema = new Schema<IUser>({
     type: Schema.Types.ObjectId,
     ref: 'User',
   }],
-  nsfwEnabled: {
-    type: Boolean,
-    default: false,
+  nsfwContentFilter: {
+    type: String,
+    enum: ['sfw', 'all', 'nsfw'],
+    default: 'sfw', // Default to SFW only for safety
   },
 }, {
   timestamps: true,

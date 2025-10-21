@@ -110,7 +110,8 @@ class ContentPool {
   }
 
   // Get random content from pool (excluding user's own and already seen)
-  async getRandom(userId: string, isNSFW: boolean): Promise<ContentEntry | null> {
+  // contentFilter: 'sfw' = SFW only, 'all' = both, 'nsfw' = NSFW only
+  async getRandom(userId: string, isNSFW: boolean, contentFilter: 'sfw' | 'all' | 'nsfw' = 'sfw'): Promise<ContentEntry | null> {
     // Get seen content from database (last 30 days)
     let seenContent = this.userContent.get(userId) || new Set<string>();
     
@@ -127,19 +128,41 @@ class ContentPool {
       }
     }
     
-    // Filter available content
-    const available = Array.from(this.pool.values()).filter(content => 
-      content.userId !== userId && // Not user's own content
-      content.isNSFW === isNSFW && // Matching NSFW preference
-      !seenContent.has(content.id) // Haven't seen it yet
-    );
+    // Filter available content based on user's content filter preference
+    const available = Array.from(this.pool.values()).filter(content => {
+      // Don't show user's own content
+      if (content.userId === userId) return false;
+      
+      // Don't show already seen content
+      if (seenContent.has(content.id)) return false;
+      
+      // Apply content filter
+      if (contentFilter === 'sfw') {
+        // SFW only mode: only show non-NSFW content
+        return !content.isNSFW;
+      } else if (contentFilter === 'nsfw') {
+        // NSFW only mode: only show NSFW content
+        return content.isNSFW;
+      } else {
+        // 'all' mode: show everything
+        return true;
+      }
+    });
 
     if (available.length === 0) {
       // If no unseen content, allow re-showing content (reset seen list)
-      const resetAvailable = Array.from(this.pool.values()).filter(content =>
-        content.userId !== userId &&
-        content.isNSFW === isNSFW
-      );
+      const resetAvailable = Array.from(this.pool.values()).filter(content => {
+        if (content.userId === userId) return false;
+        
+        // Apply same filter logic
+        if (contentFilter === 'sfw') {
+          return !content.isNSFW;
+        } else if (contentFilter === 'nsfw') {
+          return content.isNSFW;
+        } else {
+          return true;
+        }
+      });
 
       if (resetAvailable.length === 0) {
         return null;
@@ -369,7 +392,6 @@ class ContentPool {
               reactions: doc.reactions,
               comments: doc.comments,
               saveForever: doc.savedForever,
-              uploadedAt: doc.uploadedAt.getTime(),
             });
           }
         });

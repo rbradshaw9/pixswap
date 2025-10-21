@@ -15,7 +15,7 @@ export interface IUser extends Document {
   lastSeen: Date;
   blockedUsers: Types.ObjectId[];
   friends: Types.ObjectId[];
-  nsfwEnabled: boolean;
+  nsfwContentFilter: 'sfw' | 'all' | 'nsfw'; // sfw = SFW only, all = both, nsfw = NSFW only
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;

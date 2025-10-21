@@ -13,7 +13,36 @@ router.put('/profile', protect, async (req, res) => {
   res.json({ message: 'Update user profile - TODO' });
 });
 
-// Update NSFW preference
+// Update NSFW content filter preference
+router.patch('/content-filter', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id;
+    const { contentFilter } = req.body;
+
+    if (!['sfw', 'all', 'nsfw'].includes(contentFilter)) {
+      return res.status(400).json({
+        success: false,
+        message: 'contentFilter must be one of: sfw, all, nsfw',
+      });
+    }
+
+    await User.findByIdAndUpdate(userId, { nsfwContentFilter: contentFilter });
+
+    res.json({
+      success: true,
+      message: 'Content filter updated',
+      data: { contentFilter },
+    });
+  } catch (error: any) {
+    console.error('Update content filter error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update filter',
+    });
+  }
+});
+
+// Legacy endpoint for backward compatibility
 router.patch('/nsfw-preference', protect, async (req: any, res: any) => {
   try {
     const userId = req.user._id;
@@ -26,12 +55,14 @@ router.patch('/nsfw-preference', protect, async (req: any, res: any) => {
       });
     }
 
-    await User.findByIdAndUpdate(userId, { nsfwEnabled });
+    // Convert boolean to new filter system
+    const contentFilter = nsfwEnabled ? 'all' : 'sfw';
+    await User.findByIdAndUpdate(userId, { nsfwContentFilter: contentFilter });
 
     res.json({
       success: true,
       message: 'NSFW preference updated',
-      data: { nsfwEnabled },
+      data: { nsfwEnabled, contentFilter },
     });
   } catch (error: any) {
     console.error('Update NSFW preference error:', error);

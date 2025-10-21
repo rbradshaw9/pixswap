@@ -40,12 +40,18 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       timestamp: Date.now(),
     });
 
-    // Get random content from pool (not from same user, matching NSFW preference)
-    let receivedContent = await contentPool.getRandom(userId, isNSFW);
+    // Get user's content filter preference (if authenticated)
+    let contentFilter: 'sfw' | 'all' | 'nsfw' = 'sfw';
+    if (req.user) {
+      contentFilter = req.user.nsfwContentFilter || 'sfw';
+    }
+
+    // Get random content from pool based on user's content filter
+    let receivedContent = await contentPool.getRandom(userId, isNSFW, contentFilter);
 
     // If no content available from others, get any random content (even their own or latest)
     if (!receivedContent) {
-      // Try to get any content regardless of user (for first-time users or empty pool)
+      // Try to get any content regardless of filter
       receivedContent = await contentPool.getAny(isNSFW);
       
       // If still nothing, return their own upload as content
@@ -253,13 +259,19 @@ router.post('/:id/friend', protect, async (req: any, res: any) => {
 });
 
 // Get more content (skip feature)
-router.post('/next', upload.none(), async (req: any, res: any) => {
+router.post('/next', optionalAuth, upload.none(), async (req: any, res: any) => {
   try {
     const userId = req.user?._id?.toString() || req.body.userId;
     const isNSFW = req.body.isNSFW === 'true';
 
-    // Get another random content
-    const content = await contentPool.getRandom(userId, isNSFW);
+    // Get user's content filter preference (if authenticated)
+    let contentFilter: 'sfw' | 'all' | 'nsfw' = 'sfw';
+    if (req.user) {
+      contentFilter = req.user.nsfwContentFilter || 'sfw';
+    }
+
+    // Get another random content based on user's filter
+    const content = await contentPool.getRandom(userId, isNSFW, contentFilter);
 
     if (!content) {
       return res.json({

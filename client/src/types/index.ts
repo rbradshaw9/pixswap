@@ -1,4 +1,6 @@
 // Shared types between frontend and backend
+export type ContentFilter = 'sfw' | 'all' | 'nsfw';
+
 export interface User {
   _id: string;
   username: string;
@@ -8,6 +10,7 @@ export interface User {
   interests?: string[];
   isActive: boolean;
   isAdmin?: boolean;
+  nsfwContentFilter?: ContentFilter;
   lastSeen: Date;
   createdAt: Date;
 }

@@ -143,6 +143,132 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
   }
 });
 
+// IMPORTANT: Specific routes must come BEFORE the generic /:id route!
+
+// Get user's uploads (requires auth)
+router.get('/my-uploads', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    console.log('📂 Fetching uploads for user:', { userId, username: req.user.username });
+    
+    const userContent = await contentPool.getUserContent(userId);
+    
+    console.log('📂 getUserContent result:', {
+      count: userContent.length,
+      sample: userContent.slice(0, 2).map((c: any) => ({
+        id: c.id,
+        mediaType: c.mediaType,
+        isNSFW: c.isNSFW,
+        hasCaption: !!c.caption,
+      })),
+    });
+
+    res.json({
+      success: true,
+      data: userContent,
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('📂 Get uploads error:', error);
+    console.error('📂 Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to fetch uploads',
+      timestamp: new Date(),
+    });
+  }
+});
+
+// Get user's liked posts (requires auth)
+router.get('/liked-posts', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id.toString();
+    console.log('❤️ Fetching liked posts for user:', { userId, username: req.user.username });
+    
+    // Find all likes by this user
+    const userLikes = await SwapComment.find({
+      author: userId,
+      type: 'like',
+    }).sort({ createdAt: -1 }).lean();
+    
+    console.log('❤️ Found likes:', {
+      count: userLikes.length,
+      sample: userLikes.slice(0, 2).map((l: any) => ({
+        contentId: l.contentId,
+        createdAt: l.createdAt,
+      })),
+    });
+    
+    // Get the content for each like
+    const contentIds = userLikes.map(like => like.contentId).filter(id => id);
+    console.log('❤️ Content IDs to fetch:', contentIds.slice(0, 5));
+    
+    if (contentIds.length === 0) {
+      console.log('❤️ No content IDs, returning empty array');
+      return res.json({
+        success: true,
+        data: [],
+        timestamp: new Date(),
+      });
+    }
+    
+    const likedContent = await Content.find({ 
+      _id: { $in: contentIds }
+    }).lean();
+    
+    console.log('❤️ Found content items:', {
+      count: likedContent.length,
+      sample: likedContent.slice(0, 2).map((c: any) => ({
+        id: c._id?.toString(),
+        mediaType: c.mediaType,
+        hasUsername: !!c.username,
+      })),
+    });
+    
+    // Map likes to content with likedAt timestamp
+    const likedPosts = likedContent.map((content: any) => {
+      const contentIdStr = content._id?.toString() || '';
+      const like = userLikes.find((l: any) => {
+        // Handle both string and ObjectId comparisons
+        const likeContentId = typeof l.contentId === 'string' ? l.contentId : l.contentId?.toString();
+        return likeContentId === contentIdStr;
+      });
+      
+      return {
+        id: contentIdStr,
+        mediaUrl: content.mediaUrl,
+        mediaType: content.mediaType,
+        caption: content.caption,
+        username: content.username,
+        uploadedAt: content.uploadedAt?.getTime() || Date.now(),
+        views: content.views || 0,
+        isNSFW: content.isNSFW || false,
+        likedAt: like?.createdAt ? new Date(like.createdAt).getTime() : Date.now(),
+        comments: content.comments || 0,
+      };
+    });
+    
+    console.log('❤️ Returning liked posts:', { count: likedPosts.length });
+
+    res.json({
+      success: true,
+      data: likedPosts,
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    console.error('❤️ Get liked posts error:', error);
+    console.error('❤️ Error name:', error.name);
+    console.error('❤️ Error message:', error.message);
+    console.error('❤️ Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      message: error.message || 'Failed to fetch liked posts',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      timestamp: new Date(),
+    });
+  }
+});
+
 // Get swap details
 router.get('/:id', async (req: any, res: any) => {
   try {
@@ -339,130 +465,6 @@ router.post('/next', optionalAuth, upload.none(), async (req: any, res: any) => 
     res.status(500).json({ 
       success: false,
       message: error.message || 'Failed to get next content',
-      timestamp: new Date(),
-    });
-  }
-});
-
-// Get user's uploads (requires auth)
-router.get('/my-uploads', protect, async (req: any, res: any) => {
-  try {
-    const userId = req.user._id.toString();
-    console.log('📂 Fetching uploads for user:', { userId, username: req.user.username });
-    
-    const userContent = await contentPool.getUserContent(userId);
-    
-    console.log('📂 getUserContent result:', {
-      count: userContent.length,
-      sample: userContent.slice(0, 2).map(c => ({
-        id: c.id,
-        mediaType: c.mediaType,
-        isNSFW: c.isNSFW,
-        hasCaption: !!c.caption,
-      })),
-    });
-
-    res.json({
-      success: true,
-      data: userContent,
-      timestamp: new Date(),
-    });
-  } catch (error: any) {
-    console.error('📂 Get uploads error:', error);
-    console.error('📂 Error stack:', error.stack);
-    res.status(500).json({ 
-      success: false,
-      message: error.message || 'Failed to fetch uploads',
-      timestamp: new Date(),
-    });
-  }
-});
-
-// Get user's liked posts (requires auth)
-router.get('/liked-posts', protect, async (req: any, res: any) => {
-  try {
-    const userId = req.user._id.toString();
-    console.log('❤️ Fetching liked posts for user:', { userId, username: req.user.username });
-    
-    // Find all likes by this user
-    const userLikes = await SwapComment.find({
-      author: userId,
-      type: 'like',
-    }).sort({ createdAt: -1 }).lean();
-    
-    console.log('❤️ Found likes:', {
-      count: userLikes.length,
-      sample: userLikes.slice(0, 2).map((l: any) => ({
-        contentId: l.contentId,
-        createdAt: l.createdAt,
-      })),
-    });
-    
-    // Get the content for each like
-    const contentIds = userLikes.map(like => like.contentId).filter(id => id);
-    console.log('❤️ Content IDs to fetch:', contentIds.slice(0, 5));
-    
-    if (contentIds.length === 0) {
-      console.log('❤️ No content IDs, returning empty array');
-      return res.json({
-        success: true,
-        data: [],
-        timestamp: new Date(),
-      });
-    }
-    
-    const likedContent = await Content.find({ 
-      _id: { $in: contentIds }
-    }).lean();
-    
-    console.log('❤️ Found content items:', {
-      count: likedContent.length,
-      sample: likedContent.slice(0, 2).map((c: any) => ({
-        id: c._id?.toString(),
-        mediaType: c.mediaType,
-        hasUsername: !!c.username,
-      })),
-    });
-    
-    // Map likes to content with likedAt timestamp
-    const likedPosts = likedContent.map((content: any) => {
-      const contentIdStr = content._id?.toString() || '';
-      const like = userLikes.find((l: any) => {
-        // Handle both string and ObjectId comparisons
-        const likeContentId = typeof l.contentId === 'string' ? l.contentId : l.contentId?.toString();
-        return likeContentId === contentIdStr;
-      });
-      
-      return {
-        id: contentIdStr,
-        mediaUrl: content.mediaUrl,
-        mediaType: content.mediaType,
-        caption: content.caption,
-        username: content.username,
-        uploadedAt: content.uploadedAt?.getTime() || Date.now(),
-        views: content.views || 0,
-        isNSFW: content.isNSFW || false,
-        likedAt: like?.createdAt ? new Date(like.createdAt).getTime() : Date.now(),
-        comments: content.comments || 0,
-      };
-    });
-    
-    console.log('❤️ Returning liked posts:', { count: likedPosts.length });
-
-    res.json({
-      success: true,
-      data: likedPosts,
-      timestamp: new Date(),
-    });
-  } catch (error: any) {
-    console.error('❤️ Get liked posts error:', error);
-    console.error('❤️ Error name:', error.name);
-    console.error('❤️ Error message:', error.message);
-    console.error('❤️ Error stack:', error.stack);
-    res.status(500).json({ 
-      success: false,
-      message: error.message || 'Failed to fetch liked posts',
-      error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       timestamp: new Date(),
     });
   }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { optionalAuth, protect } from '@/middleware/auth';
-import { User, Content, ContentLike } from '@/models';
+import { User, Content, SwapComment, CommentLike } from '@/models';
 import { contentPool } from '@/services/contentPool';
 
 const router = Router();

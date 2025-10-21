@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Upload, AlertCircle, Shield } from 'lucide-react';
+import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 
@@ -17,13 +17,11 @@ export default function SwapPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file');
       return;
     }
 
-    // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
       setError('Image must be less than 10MB');
       return;
@@ -32,7 +30,6 @@ export default function SwapPage() {
     setSelectedFile(file);
     setError('');
 
-    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);
@@ -58,7 +55,6 @@ export default function SwapPage() {
         },
       });
 
-      // Navigate to swap chat with swap ID
       navigate(`/swap/${response.data.swapId}`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to upload photo');
@@ -67,173 +63,285 @@ export default function SwapPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900">
+      {/* Navigation Bar */}
+      <nav className="border-b border-white/10 bg-black/20 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-transparent">
+                PixSwap
+              </span>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-gray-300">
+              <span className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Anonymous</span>
+              </span>
+              <span className="flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                <span className="hidden sm:inline">Secure</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </nav>
 
-      <div className="max-w-2xl w-full relative z-10">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
-            PixSwap
+      {/* Hero Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent leading-tight">
+            Share. Match. Connect.
           </h1>
-          <p className="text-xl text-gray-300 font-light">
-            Share a photo, match with someone random, chat instantly
+          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto font-light leading-relaxed">
+            Upload a photo, get instantly matched with someone random, and start a conversation about your shared images.
           </p>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 md:p-12">
-          {/* NSFW Toggle - Prominent at top */}
-          <div className="mb-8 p-6 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-2xl border border-orange-500/30">
-            <div className="flex items-start gap-4">
-              <Shield className="w-6 h-6 text-orange-400 flex-shrink-0 mt-1" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-white">NSFW Content Filter</h3>
-                  <button
-                    onClick={() => setIsNSFW(!isNSFW)}
-                    className={`relative inline-flex h-8 w-16 items-center rounded-full transition-all duration-300 ${
-                      isNSFW 
-                        ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-lg shadow-orange-500/50' 
-                        : 'bg-gray-600'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 shadow-lg ${
-                        isNSFW ? 'translate-x-9' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-                <p className="text-sm text-gray-300 leading-relaxed">
-                  <span className="font-medium text-orange-300">
-                    {isNSFW ? '⚠️ NSFW Mode Active' : '✓ Safe Mode Active'}
-                  </span>
-                  <br />
-                  {isNSFW 
-                    ? 'You will only be matched with other users who have NSFW mode enabled. Must be 18+.'
-                    : 'You will only be matched with safe-for-work content.'
-                  }
-                </p>
-              </div>
+        {/* How It Works */}
+        <div className="grid md:grid-cols-3 gap-6 mb-16">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/50">
+              <ImageIcon className="w-7 h-7 text-white" />
             </div>
+            <h3 className="text-xl font-semibold text-white mb-3">1. Upload Your Photo</h3>
+            <p className="text-gray-300 leading-relaxed">
+              Choose any image from your device. Set your content preference and privacy settings.
+            </p>
           </div>
 
-          {/* Upload Area */}
-          <div className="space-y-6">
-            {!preview ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="group relative border-2 border-dashed border-purple-400/50 hover:border-purple-400 rounded-2xl p-16 text-center cursor-pointer transition-all duration-300 bg-gradient-to-br from-purple-500/5 to-pink-500/5 hover:from-purple-500/10 hover:to-pink-500/10"
-              >
-                <div className="transform group-hover:scale-105 transition-transform duration-300">
-                  <Camera className="w-20 h-20 mx-auto mb-6 text-purple-400" />
-                  <p className="text-2xl font-semibold text-white mb-3">Choose a photo</p>
-                  <p className="text-gray-400">
-                    Click to select an image • Max 10MB
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="relative rounded-2xl overflow-hidden bg-black/20">
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="w-full h-96 object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedFile(null);
-                    setPreview('');
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = '';
-                    }
-                  }}
-                  className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm border-white/20 text-white hover:bg-black/70"
-                >
-                  Change Photo
-                </Button>
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-
-            {/* Error Message */}
-            {error && (
-              <div className="flex items-center gap-3 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 backdrop-blur-sm">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <p className="text-sm">{error}</p>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmit}
-              disabled={!selectedFile || isUploading}
-              className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl shadow-lg shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-300"
-              size="lg"
-            >
-              {isUploading ? (
-                <>
-                  <div className="loading-spinner mr-3" />
-                  Finding your match...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-5 h-5 mr-3" />
-                  Swap Photo
-                </>
-              )}
-            </Button>
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 shadow-lg shadow-purple-500/50">
+              <Users className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-3">2. Get Matched</h3>
+            <p className="text-gray-300 leading-relaxed">
+              We instantly pair you with another user based on your preferences and availability.
+            </p>
           </div>
 
-          {/* Disclaimer */}
-          <div className="mt-8 pt-6 border-t border-white/10">
-            <p className="text-xs text-gray-400 text-center leading-relaxed">
-              By using PixSwap, you confirm you're 18+ if using NSFW mode and agree to our community guidelines.
-              <br />
-              All chats are temporary and photos are automatically deleted after 24 hours.
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-6 shadow-lg shadow-orange-500/50">
+              <MessageCircle className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-3">3. Chat & Share</h3>
+            <p className="text-gray-300 leading-relaxed">
+              See both photos side-by-side and chat in real-time. Share more photos or start a new swap anytime.
             </p>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-sm text-gray-400">
-            Anonymous • Temporary • Random
-          </p>
+        {/* Main Upload Section */}
+        <div className="max-w-4xl mx-auto">
+          {/* Content Filter Section */}
+          <div className="mb-8">
+            <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 backdrop-blur-xl rounded-3xl border border-orange-500/20 overflow-hidden">
+              <div className="p-8">
+                <div className="flex items-start gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg">
+                      <Shield className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-2xl font-bold text-white mb-2">Content Filter</h3>
+                        <p className="text-gray-300 text-sm">
+                          Choose your content preference for matching
+                        </p>
+                      </div>
+                      
+                      <button
+                        onClick={() => setIsNSFW(!isNSFW)}
+                        className={`relative inline-flex h-10 w-20 items-center rounded-full transition-all duration-300 shadow-lg ${
+                          isNSFW 
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-500/50' 
+                            : 'bg-gray-600 hover:bg-gray-500'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-8 w-8 transform rounded-full bg-white transition-transform duration-300 shadow-xl ${
+                            isNSFW ? 'translate-x-11' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="bg-black/20 rounded-xl p-6 border border-white/10">
+                      {isNSFW ? (
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-orange-300 font-semibold mb-2">⚠️ NSFW Mode Active</p>
+                            <p className="text-gray-300 text-sm leading-relaxed">
+                              You will only be matched with other users who have NSFW mode enabled. 
+                              By proceeding, you confirm you are 18 years or older and understand this content may be explicit.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-3">
+                          <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-green-300 font-semibold mb-2">✓ Safe Mode Active</p>
+                            <p className="text-gray-300 text-sm leading-relaxed">
+                              You will only be matched with safe-for-work content. 
+                              All photos are moderated to ensure a family-friendly experience.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Upload Card */}
+          <div className="bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 overflow-hidden shadow-2xl">
+            <div className="p-8 md:p-12">
+              <h2 className="text-3xl font-bold text-white mb-8 text-center">Upload Your Photo</h2>
+              
+              {!preview ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="group relative border-2 border-dashed border-purple-400/30 hover:border-purple-400/60 rounded-3xl p-20 text-center cursor-pointer transition-all duration-500 bg-gradient-to-br from-purple-500/5 to-pink-500/5 hover:from-purple-500/10 hover:to-pink-500/10 overflow-hidden"
+                >
+                  {/* Animated background */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-purple-500/10 to-pink-500/10 animate-pulse"></div>
+                  </div>
+                  
+                  <div className="relative transform group-hover:scale-105 transition-transform duration-500">
+                    <div className="w-24 h-24 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-purple-500/50 group-hover:shadow-purple-500/70 transition-shadow duration-500">
+                      <Camera className="w-12 h-12 text-white" />
+                    </div>
+                    <p className="text-3xl font-bold text-white mb-4">Choose a Photo</p>
+                    <p className="text-lg text-gray-300 mb-2">
+                      Click or drag to upload
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      PNG, JPG, GIF up to 10MB
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative rounded-3xl overflow-hidden bg-black shadow-2xl">
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="w-full h-[500px] object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                  
+                  <div className="absolute top-6 right-6 flex gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedFile(null);
+                        setPreview('');
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
+                      }}
+                      className="bg-black/50 backdrop-blur-xl border-white/20 text-white hover:bg-black/70 shadow-lg"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      Change
+                    </Button>
+                  </div>
+
+                  <div className="absolute bottom-6 left-6 right-6">
+                    <div className="bg-black/50 backdrop-blur-xl rounded-2xl p-4 border border-white/20">
+                      <p className="text-white font-semibold mb-1">Ready to swap</p>
+                      <p className="text-gray-300 text-sm">Your photo will be shared with your match</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {error && (
+                <div className="mt-6 flex items-center gap-3 p-5 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-200 backdrop-blur-sm">
+                  <AlertCircle className="w-6 h-6 flex-shrink-0" />
+                  <p className="font-medium">{error}</p>
+                </div>
+              )}
+
+              <Button
+                onClick={handleSubmit}
+                disabled={!selectedFile || isUploading}
+                className="w-full h-16 text-lg font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 text-white rounded-2xl shadow-2xl shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-300 mt-8 group"
+                size="lg"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="loading-spinner mr-3" />
+                    Finding your match...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
+                    Start Swap
+                    <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Footer Info */}
+          <div className="mt-12 text-center">
+            <div className="inline-flex items-center gap-8 px-8 py-4 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10">
+              <div className="flex items-center gap-2 text-gray-300">
+                <Shield className="w-5 h-5 text-green-400" />
+                <span className="text-sm font-medium">End-to-End Encrypted</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-300">
+                <Users className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-medium">100% Anonymous</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-300">
+                <Sparkles className="w-5 h-5 text-purple-400" />
+                <span className="text-sm font-medium">Auto-Delete 24h</span>
+              </div>
+            </div>
+            
+            <p className="mt-6 text-xs text-gray-400 max-w-2xl mx-auto leading-relaxed">
+              By using PixSwap, you confirm you're 18+ if using NSFW mode and agree to our community guidelines.
+              All chats are temporary and content is automatically deleted after 24 hours for your privacy.
+            </p>
+          </div>
         </div>
       </div>
 
       <style>{`
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
+        .loading-spinner {
+          width: 20px;
+          height: 20px;
+          border: 3px solid rgba(255,255,255,0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
         }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
+        
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

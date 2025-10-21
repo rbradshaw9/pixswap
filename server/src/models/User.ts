@@ -48,6 +48,10 @@ const userSchema = new Schema<IUser>({
     type: Boolean,
     default: false,
   },
+  isAdmin: {
+    type: Boolean,
+    default: false,
+  },
   lastSeen: {
     type: Date,
     default: Date.now,

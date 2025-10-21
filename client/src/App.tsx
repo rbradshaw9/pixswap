@@ -11,6 +11,7 @@ import SwapChatPage from '@/pages/SwapChatPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import MyUploadsPage from '@/pages/MyUploadsPage';
+import AdminPage from '@/pages/AdminPage';
 
 // Components
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -40,6 +41,7 @@ function App() {
           <Route path="/view" element={<SwapViewPage />} />
           <Route path="/my-uploads" element={<MyUploadsPage />} />
           <Route path="/swap/:swapId" element={<SwapChatPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           
           {/* Catch all redirect to swap */}
           <Route path="*" element={<Navigate to="/" />} />

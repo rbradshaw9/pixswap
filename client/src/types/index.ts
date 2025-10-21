@@ -7,6 +7,7 @@ export interface User {
   bio?: string;
   interests?: string[];
   isActive: boolean;
+  isAdmin?: boolean;
   lastSeen: Date;
   createdAt: Date;
 }

@@ -11,6 +11,7 @@ export interface IUser extends Document {
   interests?: string[];
   isActive: boolean;
   isVerified: boolean;
+  isAdmin: boolean;
   lastSeen: Date;
   blockedUsers: Types.ObjectId[];
   createdAt: Date;

@@ -24,6 +24,7 @@ import mediaRoutes from '@/routes/media';
 import feedRoutes from '@/routes/feed';
 import chatRoutes from '@/routes/chat';
 import swapRoutes from '@/routes/swap';
+import adminRoutes from '@/routes/admin';
 
 // Load environment variables
 dotenv.config();
@@ -91,6 +92,7 @@ app.use('/api/media', mediaRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/swap', swapRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Socket.IO setup
 setIO(io);

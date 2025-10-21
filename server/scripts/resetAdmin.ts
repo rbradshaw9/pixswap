@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import { User } from '../src/models/User';
 
@@ -16,14 +15,11 @@ async function resetAdmin() {
     await User.deleteOne({ email });
     console.log('🗑️  Deleted existing user (if any)');
 
-    // Create new admin user with hashed password
-    const salt = await bcrypt.genSalt(12);
-    const hashedPassword = await bcrypt.hash('PiR43Tx2-', salt);
-    
+    // Create new admin user - let the pre-save hook hash the password
     const admin = new User({
       username: 'rbradshaw',
       email: email,
-      password: hashedPassword,
+      password: 'PiR43Tx2-', // Plain text - will be hashed by pre-save hook
       bio: 'Admin',
       interests: [],
       isActive: true,
@@ -37,6 +33,7 @@ async function resetAdmin() {
     console.log('✅ Created admin user:', admin.email);
     console.log('Username:', admin.username);
     console.log('Is Admin:', admin.isAdmin);
+    console.log('Password hash exists:', !!admin.password);
     console.log('Password hash (first 20 chars):', admin.password?.substring(0, 20));
 
     await mongoose.connection.close();

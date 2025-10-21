@@ -51,8 +51,9 @@ export default function ProfilePage() {
     try {
       const response = await api.get(`/user/profile/${username}`);
       if (response.success && response.data) {
-        setProfileData(response.data.profile);
-        setContent(response.data.content || []);
+        const data = response.data as { profile: ProfileData; content: ProfileContent[] };
+        setProfileData(data.profile);
+        setContent(data.content || []);
       }
     } catch (err: any) {
       console.error('Failed to load profile:', err);

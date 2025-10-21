@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { upload } from '@/middleware/upload';
+import { optionalAuth } from '@/middleware/auth';
 import { Swap } from '@/models';
 import { SwapStatus } from '@/types';
 import { contentPool } from '@/services/contentPool';
@@ -7,10 +8,10 @@ import { getIO } from '@/socket';
 
 const router = Router();
 
-// Upload and get random content from pool
-router.post('/queue', upload.single('image'), async (req: any, res: any) => {
+// Upload and get random content from pool (with optional auth)
+router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res: any) => {
   try {
-    // Generate temp user ID if not authenticated
+    // Use authenticated user ID if available, otherwise generate temp ID
     const userId = req.user?._id?.toString() || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const isNSFW = req.body.isNSFW === 'true';
     

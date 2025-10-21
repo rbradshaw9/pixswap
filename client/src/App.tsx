@@ -8,6 +8,8 @@ import { useAuthStore } from '@/stores/auth';
 import SwapPage from '@/pages/SwapPage';
 import SwapViewPage from '@/pages/SwapViewPage';
 import SwapChatPage from '@/pages/SwapChatPage';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
 
 // Components
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -27,7 +29,11 @@ function App() {
     <Router>
       <div className="min-h-screen">
         <Routes>
-          {/* All routes go to swap */}
+          {/* Auth routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          
+          {/* Main app routes */}
           <Route path="/" element={<SwapPage />} />
           <Route path="/swap" element={<SwapPage />} />
           <Route path="/view" element={<SwapViewPage />} />

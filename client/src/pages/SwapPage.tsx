@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap, LogIn, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import * as nsfwjs from 'nsfwjs';
@@ -9,6 +9,7 @@ import imageCompression from 'browser-image-compression';
 export default function SwapPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [user, setUser] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>('');
   const [fileType, setFileType] = useState<'image' | 'video'>('image');
@@ -25,6 +26,18 @@ export default function SwapPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get('debug') === 'true';
   });
+
+  // Check for logged in user
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (err) {
+        console.error('Failed to parse user:', err);
+      }
+    }
+  }, []);
 
   // Load NSFW model on mount (skip in production to avoid browser freeze)
   useEffect(() => {
@@ -350,10 +363,29 @@ export default function SwapPage() {
               </span>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-300">
-              <span className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                <span className="hidden sm:inline">Anonymous</span>
-              </span>
+              {user ? (
+                <span className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span className="hidden sm:inline">{user.username}</span>
+                </span>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span className="hidden sm:inline">Login</span>
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign Up</span>
+                  </Link>
+                </>
+              )}
               <span className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
                 <span className="hidden sm:inline">Secure</span>

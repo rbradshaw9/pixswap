@@ -85,14 +85,14 @@ export const protect = async (
   } catch (error) {
     const response: IApiResponse = {
       success: false,
-      message: 'Authentication error',
+      message: 'Invalid token',
       timestamp: new Date(),
     };
-    res.status(500).json(response);
+    res.status(401).json(response);
   }
 };
 
-// Optional authentication - doesn't fail if no token
+// Optional auth - doesn't fail if no token, just attaches user if present
 export const optionalAuth = async (
   req: Request,
   res: Response,
@@ -101,15 +101,21 @@ export const optionalAuth = async (
   try {
     let token: string | undefined;
 
+    // Check for token in Authorization header
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
-    } else if (req.cookies && req.cookies.token) {
+    }
+    // Check for token in cookies
+    else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
     }
 
     if (token) {
       try {
+        // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET!) as IJwtPayload;
+        
+        // Get user from database
         const user = await User.findById(decoded.userId).select('-password');
         
         if (user && user.isActive) {
@@ -117,13 +123,15 @@ export const optionalAuth = async (
           await user.save();
           req.user = user;
         }
-      } catch (error) {
-        // Silently fail for optional auth
+      } catch (err) {
+        // Token invalid, but don't fail - just continue without user
+        console.log('Optional auth: invalid token');
       }
     }
 
     next();
   } catch (error) {
+    // Don't fail, just continue without user
     next();
   }
 };

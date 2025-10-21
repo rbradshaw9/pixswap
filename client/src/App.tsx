@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
@@ -6,27 +5,14 @@ import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from '@/stores/auth';
 
 // Pages
-import HomePage from '@/pages/HomePage';
-import LoginPage from '@/pages/LoginPage';
-import SignupPage from '@/pages/SignupPage';
-import FeedPage from '@/pages/FeedPage';
-import ProfilePage from '@/pages/ProfilePage';
-import ChatPage from '@/pages/ChatPage';
 import SwapPage from '@/pages/SwapPage';
 import SwapChatPage from '@/pages/SwapChatPage';
 
 // Components
-import Layout from '@/components/Layout';
-import ProtectedRoute from '@/components/ProtectedRoute';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 function App() {
-  const { isAuthenticated, isLoading, refreshUser } = useAuthStore();
-
-  useEffect(() => {
-    // Try to refresh user data on app start if token exists
-    refreshUser();
-  }, [refreshUser]);
+  const { isLoading } = useAuthStore();
 
   if (isLoading) {
     return (
@@ -38,52 +24,14 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Routes>
-          {/* Public routes */}
-          <Route 
-            path="/" 
-            element={<Navigate to="/swap" />} 
-          />
-          <Route 
-            path="/login" 
-            element={isAuthenticated ? <Navigate to="/swap" /> : <LoginPage />} 
-          />
-          <Route 
-            path="/signup" 
-            element={isAuthenticated ? <Navigate to="/swap" /> : <SignupPage />} 
-          />
-
-          {/* Protected routes */}
-          <Route path="/feed" element={
-            <ProtectedRoute>
-              <Layout>
-                <FeedPage />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/profile/:id?" element={
-            <ProtectedRoute>
-              <Layout>
-                <ProfilePage />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/chat" element={
-            <ProtectedRoute>
-              <Layout>
-                <ChatPage />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          
+          {/* All routes go to swap */}
+          <Route path="/" element={<SwapPage />} />
           <Route path="/swap" element={<SwapPage />} />
-          
           <Route path="/swap/:swapId" element={<SwapChatPage />} />
-
-          {/* Catch all redirect */}
+          
+          {/* Catch all redirect to swap */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
 

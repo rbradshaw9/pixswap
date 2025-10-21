@@ -45,22 +45,12 @@ export default function SwapViewPage() {
         setIsNSFW(parsedContent.isNSFW || false);
         // Reactions feature removed for v1
         fetchComments(parsedContent.id);
-        // Track view
-        trackView(parsedContent.id);
+        // View tracking happens server-side in getRandom/getAny
       } catch (err) {
         console.error('Failed to parse content:', err);
       }
     }
   }, [searchParams]);
-
-  const trackView = async (contentId: string) => {
-    try {
-      // Silently track view - no need to wait or show errors
-      api.post(`/swap/${contentId}/react`, { type: 'view' });
-    } catch (err) {
-      // Ignore view tracking errors
-    }
-  };
 
   const fetchComments = async (contentId: string) => {
     try {
@@ -216,8 +206,7 @@ export default function SwapViewPage() {
         setComments([]);
         setLikesCount(0);
         await fetchComments(newContent.id);
-        // Track view of new content
-        trackView(newContent.id);
+        // View tracking happens server-side
       } else {
         toast(response.data.message || 'No more content available', {
           icon: 'ℹ️',

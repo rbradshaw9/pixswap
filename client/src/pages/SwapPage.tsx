@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Camera, Upload, AlertCircle, Shield, Sparkles, Users, MessageCircle, Image as ImageIcon, ArrowRight, CheckCircle, ScanEye, Zap, LogIn, UserPlus, FolderOpen, LogOut } from 'lucide-react';
+import NavBar from '@/components/NavBar';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -327,66 +328,7 @@ export default function SwapPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900">
-      {/* Navigation Bar */}
-      <nav className="border-b border-white/10 bg-black/20 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-transparent">
-                PixSwap
-              </span>
-            </div>
-            <div className="flex items-center gap-6 text-sm text-gray-300">
-                              {isAuthenticated ? (
-                <>
-                  <Link
-                    to="/my-uploads"
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all"
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                    <span className="hidden sm:inline">My Uploads</span>
-                  </Link>
-                  <span className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    <span className="hidden sm:inline">{user?.username || 'User'}</span>
-                  </span>
-                  <button
-                    onClick={() => logout()}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span className="hidden sm:inline">Logout</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    <span className="hidden sm:inline">Login</span>
-                  </Link>
-                  <Link
-                    to="/signup"
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Sign Up</span>
-                  </Link>
-                </>
-              )}
-              <span className="flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                <span className="hidden sm:inline">Secure</span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <NavBar variant="transparent" />
 
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Image as ImageIcon, Video, Heart, MessageCircle, Eye, Trash2, Save, Clock, Sparkles, ArrowLeft, Calendar, LogOut } from 'lucide-react';
+import NavBar from '@/components/NavBar';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -98,35 +99,7 @@ export default function MyUploadsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 bg-black/20 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back to Swap</span>
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-transparent">
-                PixSwap
-              </span>
-            </div>
-            <div className="w-24 flex justify-end">
-              {isAuthenticated && (
-                <button
-                  onClick={() => logout()}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all text-gray-300 hover:text-white text-sm"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <NavBar variant="transparent" showBackButton backTo="/" backLabel="Back to Swap" />
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

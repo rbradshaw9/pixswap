@@ -14,6 +14,7 @@ import {
   UserCog,
   LogOut
 } from 'lucide-react';
+import NavBar from '@/components/NavBar';
 import { useAuthStore } from '@/stores/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -159,23 +160,14 @@ const AdminPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      <NavBar variant="default" showBackButton backTo="/" backLabel="Back to App" />
+      
+      {/* Page Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Shield className="w-8 h-8 text-primary-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button onClick={() => logout()} variant="outline">
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-              <Button onClick={() => navigate('/swap')} variant="outline">
-                Back to App
-              </Button>
-            </div>
+          <div className="flex items-center gap-3">
+            <Shield className="w-8 h-8 text-primary-600" />
+            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
           </div>
         </div>
       </div>

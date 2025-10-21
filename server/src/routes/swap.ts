@@ -25,14 +25,9 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       fileType: req.file?.mimetype,
     });
     
-    // Get media URL - use relative path for uploads
-    let mediaUrl = req.file?.path || req.file?.location;
+    // Get media URL from Cloudinary or fallback to local path
+    let mediaUrl = (req.file as any)?.path; // Cloudinary returns full URL in path
     
-    // Convert absolute path to relative path (uploads/filename.jpg)
-    if (mediaUrl && mediaUrl.includes('uploads')) {
-      mediaUrl = mediaUrl.substring(mediaUrl.indexOf('uploads'));
-    }
-
     if (!mediaUrl || !req.file) {
       return res.status(400).json({ 
         success: false,

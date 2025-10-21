@@ -1,27 +1,32 @@
-import multer, { StorageEngine } from 'multer';
-import path from 'path';
-import fs from 'fs';
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { Request } from 'express';
+import dotenv from 'dotenv';
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// Load environment variables
+dotenv.config();
 
-// Configure storage
-const storage: StorageEngine = multer.diskStorage({
-  destination: function(_req: Request, _file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) {
-    const uploadDir = path.join(process.cwd(), 'uploads');
-    // Create uploads directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function(_req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
-    cb(null, `${uniqueSuffix}-${file.originalname}`);
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Configure Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    // Determine resource type based on mimetype
+    const resourceType = file.mimetype.startsWith('video/') ? 'video' : 'image';
+    
+    return {
+      folder: 'pixswap',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov'],
+      resource_type: resourceType,
+      public_id: `${Date.now()}-${Math.round(Math.random() * 1E9)}`,
+    };
   },
 });
 

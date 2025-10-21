@@ -72,8 +72,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(limiter);
 
-// Static files for uploads (development only)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Note: Static file serving removed - using Cloudinary for media storage
 
 // Health check endpoint
 app.get('/health', (req, res) => {

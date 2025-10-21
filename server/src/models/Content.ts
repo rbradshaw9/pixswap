@@ -8,6 +8,7 @@ export interface IContent {
   mediaType: 'image' | 'video';
   caption?: string;
   isNSFW: boolean;
+  isHidden: boolean;
   views: number;
   reactions: number;
   comments: number;
@@ -44,6 +45,11 @@ const contentSchema = new Schema<IContent>({
     maxlength: 500,
   },
   isNSFW: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  isHidden: {
     type: Boolean,
     default: false,
     index: true,

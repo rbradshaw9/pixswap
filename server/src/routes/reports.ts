@@ -1,23 +1,29 @@
 import { Router } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { Report } from '@/models/Report';
 import { Content } from '@/models/Content';
 import { protect } from '@/middleware/auth';
+import { ReportType, ReportStatus } from '@/types';
 
 const router = Router();
 
-// Submit a report (authenticated or anonymous)
-router.post('/content/:contentId', async (req: any, res: any) => {
+// Submit a report (authenticated only for now)
+router.post('/content/:contentId', protect, async (req: any, res: any) => {
   try {
     const { contentId } = req.params;
-    const { reason, details } = req.body;
+    const { type, description } = req.body;
 
-    // Validate reason
-    const validReasons = ['inappropriate', 'spam', 'harassment', 'illegal', 'copyright', 'other'];
-    if (!reason || !validReasons.includes(reason)) {
+    // Validate report type
+    if (!type || !Object.values(ReportType).includes(type)) {
       return res.status(400).json({
         success: false,
-        message: 'Valid reason is required',
+        message: 'Valid report type is required',
+      });
+    }
+
+    if (!description || description.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Description is required',
       });
     }
 
@@ -30,13 +36,13 @@ router.post('/content/:contentId', async (req: any, res: any) => {
       });
     }
 
-    const reportedBy = req.user?._id?.toString() || 'anonymous';
-    const reporterUsername = req.user?.username;
+    const reporterId = req.user._id;
 
     // Check if user already reported this content
     const existingReport = await Report.findOne({
-      contentId,
-      reportedBy,
+      reporter: reporterId,
+      reportedContent: contentId,
+      contentType: 'media',
     });
 
     if (existingReport) {
@@ -48,20 +54,18 @@ router.post('/content/:contentId', async (req: any, res: any) => {
 
     // Create report
     const report = await Report.create({
-      _id: uuidv4(),
-      contentId,
-      reportedBy,
-      reporterUsername,
-      reason,
-      details: details?.substring(0, 1000),
-      status: 'pending',
-      createdAt: new Date(),
+      reporter: reporterId,
+      reportedContent: contentId,
+      contentType: 'media',
+      type,
+      description: description.substring(0, 500),
+      status: ReportStatus.PENDING,
     });
 
     // Check if content has multiple reports - auto-hide after 3 reports
     const reportCount = await Report.countDocuments({
-      contentId,
-      status: 'pending',
+      reportedContent: contentId,
+      status: ReportStatus.PENDING,
     });
 
     if (reportCount >= 3) {
@@ -76,8 +80,8 @@ router.post('/content/:contentId', async (req: any, res: any) => {
       success: true,
       message: 'Report submitted successfully. Thank you for helping keep our community safe.',
       report: {
-        id: report._id,
-        reason: report.reason,
+        id: report._id.toString(),
+        type: report.type,
         status: report.status,
       },
     });
@@ -93,9 +97,9 @@ router.post('/content/:contentId', async (req: any, res: any) => {
 // Get user's reports (authenticated only)
 router.get('/my-reports', protect, async (req: any, res: any) => {
   try {
-    const userId = req.user._id.toString();
+    const userId = req.user._id;
 
-    const reports = await Report.find({ reportedBy: userId })
+    const reports = await Report.find({ reporter: userId })
       .sort({ createdAt: -1 })
       .limit(50);
 

@@ -9,11 +9,10 @@ export const generateToken = (userId: string, username: string): string => {
   };
 
   const secret = process.env.JWT_SECRET || 'default-secret-key-change-in-production';
-  const options: SignOptions = {
-    expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as string,
-  };
 
-  return jwt.sign(payload, secret, options);
+  return jwt.sign(payload, secret, {
+    expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as string | number,
+  });
 };
 
 export const setTokenCookie = (res: Response, token: string): void => {

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import toast from 'react-hot-toast';
+import ProtectedMedia from '@/components/ProtectedMedia';
 
 interface Comment {
   _id: string;
@@ -286,19 +287,14 @@ export default function SwapViewPage() {
           {/* Main Content */}
           <div className="lg:col-span-2">
             <div className="bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 overflow-hidden shadow-2xl">
-              {content.mediaType === 'video' ? (
-                <video
-                  src={content.mediaUrl.startsWith('http') ? content.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${content.mediaUrl}`}
-                  controls
-                  className="w-full max-h-[70vh] object-contain bg-black"
-                />
-              ) : (
-                <img
-                  src={content.mediaUrl.startsWith('http') ? content.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${content.mediaUrl}`}
-                  alt="Swapped content"
-                  className="w-full max-h-[70vh] object-contain bg-black"
-                />
-              )}
+              <ProtectedMedia
+                mediaUrl={content.mediaUrl.startsWith('http') ? content.mediaUrl : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/${content.mediaUrl}`}
+                mediaType={content.mediaType}
+                alt="Swapped content"
+                className="w-full max-h-[70vh] object-contain bg-black"
+                showWatermark={true}
+                username={user?.username || 'Anonymous'}
+              />
               
               {/* Action Bar */}
               <div className="p-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10">

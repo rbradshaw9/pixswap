@@ -1,9 +1,12 @@
 // Content pool for storing and serving uploaded media
-// In production, use MongoDB or Redis with proper persistence
+// Hybrid approach: MongoDB for persistence + in-memory cache for speed
+
+import { Content } from '@/models/Content';
 
 interface ContentEntry {
   id: string;
   userId: string;
+  username?: string;
   mediaUrl: string;
   mediaType: 'image' | 'video';
   isNSFW: boolean;
@@ -17,6 +20,48 @@ interface ContentEntry {
 class ContentPool {
   private pool: Map<string, ContentEntry> = new Map();
   private userContent: Map<string, Set<string>> = new Map(); // Track what each user has seen
+  private useDatabase: boolean = true;
+
+  constructor() {
+    // Initialize from database on startup
+    this.loadFromDatabase();
+  }
+
+  // Load existing content from MongoDB into memory
+  private async loadFromDatabase() {
+    try {
+      const now = new Date();
+      const contents = await Content.find({
+        $or: [
+          { expiresAt: { $gt: now } },
+          { savedForever: true },
+          { expiresAt: null }
+        ]
+      }).limit(1000).sort({ uploadedAt: -1 });
+
+      for (const content of contents) {
+        const entry: ContentEntry = {
+          id: content._id.toString(),
+          userId: content.userId,
+          username: content.username,
+          mediaUrl: content.mediaUrl,
+          mediaType: content.mediaType,
+          isNSFW: content.isNSFW,
+          timestamp: content.uploadedAt.getTime(),
+          views: content.views,
+          reactions: content.reactions,
+          comments: content.comments,
+          saveForever: content.savedForever,
+        };
+        this.pool.set(entry.id, entry);
+      }
+
+      console.log(`📦 Loaded ${contents.length} content entries from database`);
+    } catch (error) {
+      console.error('Failed to load from database:', error);
+      this.useDatabase = false;
+    }
+  }
 
   // Add content to pool
   async add(entry: Omit<ContentEntry, 'id' | 'views' | 'reactions'>): Promise<ContentEntry> {
@@ -30,9 +75,34 @@ class ContentPool {
       comments: 0,
     };
 
+    // Add to memory
     this.pool.set(id, content);
     
-    // Clean up old content (>24 hours)
+    // Save to database
+    if (this.useDatabase) {
+      try {
+        const dbContent = await Content.create({
+          _id: id,
+          userId: content.userId,
+          username: content.username,
+          mediaUrl: content.mediaUrl,
+          mediaType: content.mediaType,
+          isNSFW: content.isNSFW,
+          views: 0,
+          reactions: 0,
+          comments: 0,
+          savedForever: content.saveForever || false,
+          uploadedAt: new Date(content.timestamp),
+          expiresAt: content.saveForever ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+        content.id = dbContent._id.toString();
+        this.pool.set(content.id, content);
+      } catch (error) {
+        console.error('Failed to save to database:', error);
+      }
+    }
+    
+    // Clean up old content
     this.cleanup();
     
     return content;
@@ -153,6 +223,15 @@ class ContentPool {
     const content = this.pool.get(id);
     if (content) {
       content.reactions++;
+      
+      // Update in database
+      if (this.useDatabase) {
+        try {
+          await Content.findByIdAndUpdate(id, { $inc: { reactions: 1 } });
+        } catch (error) {
+          console.error('Failed to update reaction in database:', error);
+        }
+      }
     }
   }
 
@@ -161,6 +240,15 @@ class ContentPool {
     const content = this.pool.get(id);
     if (content) {
       content.comments = (content.comments || 0) + 1;
+      
+      // Update in database
+      if (this.useDatabase) {
+        try {
+          await Content.findByIdAndUpdate(id, { $inc: { comments: 1 } });
+        } catch (error) {
+          console.error('Failed to update comment count in database:', error);
+        }
+      }
     }
   }
 
@@ -212,6 +300,15 @@ class ContentPool {
     
     this.pool.delete(contentId);
     
+    // Delete from database
+    if (this.useDatabase) {
+      try {
+        await Content.findByIdAndDelete(contentId);
+      } catch (error) {
+        console.error('Failed to delete from database:', error);
+      }
+    }
+    
     // Clean up from user seen lists
     for (const seenSet of this.userContent.values()) {
       seenSet.delete(contentId);
@@ -231,6 +328,18 @@ class ContentPool {
     }
     
     content.saveForever = saveForever;
+    
+    // Update in database
+    if (this.useDatabase) {
+      try {
+        await Content.findByIdAndUpdate(contentId, {
+          savedForever: saveForever,
+          expiresAt: saveForever ? null : new Date(Date.now() + 24 * 60 * 60 * 1000)
+        });
+      } catch (error) {
+        console.error('Failed to update save status in database:', error);
+      }
+    }
   }
 
   // Clean up old content (>24 hours)
@@ -252,6 +361,26 @@ class ContentPool {
           seenSet.delete(id);
         }
       }
+    }
+    
+    // Clean up database (run less frequently)
+    if (this.useDatabase && Math.random() < 0.1) { // 10% chance each cleanup
+      this.cleanupDatabase();
+    }
+  }
+  
+  // Clean up expired content from database
+  private async cleanupDatabase() {
+    try {
+      const result = await Content.deleteMany({
+        savedForever: false,
+        expiresAt: { $lt: new Date() }
+      });
+      if (result.deletedCount > 0) {
+        console.log(`🗑️  Cleaned up ${result.deletedCount} expired content from database`);
+      }
+    } catch (error) {
+      console.error('Database cleanup failed:', error);
     }
   }
 }

@@ -10,6 +10,7 @@ export default function SwapPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>('');
+  const [fileType, setFileType] = useState<'image' | 'video'>('image');
   const [isNSFW, setIsNSFW] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
@@ -69,27 +70,53 @@ export default function SwapPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isImage && !isVideo) {
+      setError('Please select an image or video file');
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be less than 10MB');
+    // 5GB limit for videos, 10MB for images
+    const maxSize = isVideo ? 5 * 1024 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError(isVideo ? 'Video must be less than 5GB' : 'Image must be less than 10MB');
       return;
+    }
+
+    // 2 minute limit for videos
+    if (isVideo) {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      video.onloadedmetadata = function() {
+        window.URL.revokeObjectURL(video.src);
+        if (video.duration > 120) {
+          setError('Video must be less than 2 minutes');
+          setSelectedFile(null);
+          setPreview('');
+          return;
+        }
+      };
+      
+      video.src = URL.createObjectURL(file);
     }
 
     setSelectedFile(file);
+    setFileType(isVideo ? 'video' : 'image');
     setError('');
     setNsfwDetected(false);
 
     const reader = new FileReader();
     reader.onloadend = async () => {
-      const imageSrc = reader.result as string;
-      setPreview(imageSrc);
+      const fileSrc = reader.result as string;
+      setPreview(fileSrc);
       
-      // Analyze image for NSFW content
-      await analyzeImage(imageSrc);
+      // Only analyze images for NSFW content
+      if (isImage) {
+        await analyzeImage(fileSrc);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -118,7 +145,22 @@ export default function SwapPage() {
         },
       });
 
-      navigate(`/swap/${response.data.swapId}`);
+      if (response.data.success) {
+        if (response.data.content) {
+          // Got content immediately, navigate to view page
+          const contentParam = encodeURIComponent(JSON.stringify(response.data.content));
+          navigate(`/view?content=${contentParam}`);
+        } else if (response.data.waiting) {
+          // No content available yet
+          alert('Your content has been uploaded! Check back soon to see what others have shared.');
+          // Reset form
+          setSelectedFile(null);
+          setPreview('');
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        }
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to upload photo');
       setIsUploading(false);
@@ -292,22 +334,30 @@ export default function SwapPage() {
                     <div className="w-24 h-24 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-purple-500/50 group-hover:shadow-purple-500/70 transition-shadow duration-500">
                       <Camera className="w-12 h-12 text-white" />
                     </div>
-                    <p className="text-3xl font-bold text-white mb-4">Choose a Photo</p>
+                    <p className="text-3xl font-bold text-white mb-4">Choose a Photo or Video</p>
                     <p className="text-lg text-gray-300 mb-2">
                       Click or drag to upload
                     </p>
                     <p className="text-sm text-gray-400">
-                      PNG, JPG, GIF up to 10MB
+                      Images up to 10MB • Videos up to 5GB (2min max)
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="relative rounded-3xl overflow-hidden bg-black shadow-2xl">
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    className="w-full h-[500px] object-cover"
-                  />
+                  {fileType === 'video' ? (
+                    <video
+                      src={preview}
+                      controls
+                      className="w-full h-[500px] object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={preview}
+                      alt="Preview"
+                      className="w-full h-[500px] object-cover"
+                    />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                   
                   <div className="absolute top-6 right-6 flex gap-3">
@@ -332,7 +382,9 @@ export default function SwapPage() {
                   <div className="absolute bottom-6 left-6 right-6">
                     <div className="bg-black/50 backdrop-blur-xl rounded-2xl p-4 border border-white/20">
                       <p className="text-white font-semibold mb-1">Ready to swap</p>
-                      <p className="text-gray-300 text-sm">Your photo will be shared with your match</p>
+                      <p className="text-gray-300 text-sm">
+                        Your {fileType} will be shared with someone random
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -341,12 +393,12 @@ export default function SwapPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={handleFileSelect}
                 className="hidden"
               />
 
-              {isAnalyzing && (
+              {isAnalyzing && fileType === 'image' && (
                 <div className="mt-6 flex items-center gap-3 p-5 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-blue-200 backdrop-blur-sm">
                   <ScanEye className="w-6 h-6 flex-shrink-0 animate-pulse" />
                   <p className="font-medium">Analyzing image content...</p>

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 
 // Pages
 import SwapPage from '@/pages/SwapPage';
+import SwapViewPage from '@/pages/SwapViewPage';
 import SwapChatPage from '@/pages/SwapChatPage';
 
 // Components
@@ -29,6 +30,7 @@ function App() {
           {/* All routes go to swap */}
           <Route path="/" element={<SwapPage />} />
           <Route path="/swap" element={<SwapPage />} />
+          <Route path="/view" element={<SwapViewPage />} />
           <Route path="/swap/:swapId" element={<SwapChatPage />} />
           
           {/* Catch all redirect to swap */}

@@ -598,15 +598,42 @@ class ContentPool {
     }
   }
   
-  // Clean up expired content from database
+  // Clean up expired content from database and Cloudinary
   private async cleanupDatabase() {
     try {
+      // Find expired content first to get cloudinaryIds
+      const expiredContent = await Content.find({
+        savedForever: false,
+        expiresAt: { $lt: new Date() }
+      }).lean();
+
+      if (expiredContent.length === 0) {
+        return;
+      }
+
+      // Delete from Cloudinary first
+      const { deleteFromCloudinary } = await import('@/utils/cloudinary');
+      let cloudinaryDeleteCount = 0;
+      
+      for (const content of expiredContent) {
+        if (content.cloudinaryId) {
+          try {
+            await deleteFromCloudinary(content.cloudinaryId, content.mediaType);
+            cloudinaryDeleteCount++;
+          } catch (error) {
+            console.error(`Failed to delete ${content.cloudinaryId} from Cloudinary:`, error);
+          }
+        }
+      }
+
+      // Then delete from database
       const result = await Content.deleteMany({
         savedForever: false,
         expiresAt: { $lt: new Date() }
       });
+
       if (result.deletedCount > 0) {
-        console.log(`🗑️  Cleaned up ${result.deletedCount} expired content from database`);
+        console.log(`🗑️  Cleaned up ${result.deletedCount} expired content from database (${cloudinaryDeleteCount} from Cloudinary)`);
       }
     } catch (error) {
       console.error('Database cleanup failed:', error);

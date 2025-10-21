@@ -102,14 +102,17 @@ const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   try {
-    // Connect to MongoDB
-    await connectDB();
-    
-    // Start server
+    // Start server first
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
       console.log(`📡 Socket.IO ready for connections`);
+    });
+
+    // Connect to MongoDB (async, non-blocking)
+    connectDB().catch(error => {
+      console.error('❌ MongoDB connection failed:', error);
+      console.log('⚠️  Server running without database connection');
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

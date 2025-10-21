@@ -72,12 +72,12 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
     if (!receivedContent) {
       console.log('⚠️ No content with filter, trying any content except own...');
       // Get any content that's not the user's own
-      const allContent = Array.from((contentPool as any).pool.values()).filter((c: any) => c.userId !== userId);
+      const allContent: any[] = Array.from((contentPool as any).pool.values()).filter((c: any) => c.userId !== userId);
       
       if (allContent.length > 0) {
         const randomIndex = Math.floor(Math.random() * allContent.length);
-        const alternativeContent = allContent[randomIndex];
-        if (alternativeContent) {
+        const alternativeContent = allContent[randomIndex] as any;
+        if (alternativeContent && alternativeContent.id) {
           receivedContent = alternativeContent;
           console.log('✓ Found alternative content:', receivedContent.id);
         }

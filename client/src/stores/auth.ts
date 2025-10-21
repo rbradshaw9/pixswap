@@ -8,6 +8,7 @@ interface AuthStore extends AuthState {
   login: (data: LoginForm) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  setUser: (user: any) => void;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
   hasHydrated: boolean;
@@ -94,6 +95,8 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
+      setUser: (user: any) => set({ user }),
+      
       clearError: () => set({ error: null }),
       
       setLoading: (loading: boolean) => set({ isLoading: loading }),

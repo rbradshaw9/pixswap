@@ -22,7 +22,7 @@ const storage = new CloudinaryStorage({
     const resourceType = file.mimetype.startsWith('video/') ? 'video' : 'image';
     
     return {
-      folder: 'pixswap',
+      folder: 'PixSwap',
       allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov'],
       resource_type: resourceType,
       public_id: `${Date.now()}-${Math.round(Math.random() * 1E9)}`,

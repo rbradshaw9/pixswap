@@ -56,7 +56,7 @@ class ContentPool {
       }).limit(1000).sort({ uploadedAt: -1 });
 
       console.log('📦 Content matching query:', contents.length);
-      if (contents.length > 0) {
+      if (contents.length > 0 && contents[0]) {
         console.log('📦 Sample content:', {
           id: contents[0]._id.toString(),
           userId: contents[0].userId,

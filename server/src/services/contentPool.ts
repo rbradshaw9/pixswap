@@ -17,6 +17,7 @@ interface ContentEntry {
   reactions: number;
   comments?: number;
   saveForever?: boolean;
+  cloudinaryId?: string;
 }
 
 class ContentPool {
@@ -80,6 +81,7 @@ class ContentPool {
           reactions: content.reactions,
           comments: content.comments,
           saveForever: content.savedForever,
+          cloudinaryId: content.cloudinaryId,
         };
         this.pool.set(entry.id, entry);
       }
@@ -133,6 +135,7 @@ class ContentPool {
           savedForever: content.saveForever || false,
           uploadedAt: new Date(content.timestamp),
           expiresAt,
+          cloudinaryId: content.cloudinaryId,
         });
         console.log('💾 Content saved to database successfully:', id);
       } catch (error) {
@@ -468,6 +471,12 @@ class ContentPool {
     
     if (content.userId !== userId) {
       throw new Error('Unauthorized to delete this content');
+    }
+    
+    // Delete from Cloudinary if cloudinaryId exists
+    if (content.cloudinaryId) {
+      const { deleteFromCloudinary } = await import('@/utils/cloudinary');
+      await deleteFromCloudinary(content.cloudinaryId, content.mediaType);
     }
     
     this.pool.delete(contentId);

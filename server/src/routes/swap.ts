@@ -27,6 +27,7 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
     
     // Get media URL from Cloudinary or fallback to local path
     let mediaUrl = (req.file as any)?.path; // Cloudinary returns full URL in path
+    const cloudinaryId = (req.file as any)?.filename; // Cloudinary returns public_id in filename
     
     if (!mediaUrl || !req.file) {
       return res.status(400).json({ 
@@ -45,6 +46,7 @@ router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res
       caption,
       isNSFW,
       timestamp: Date.now(),
+      cloudinaryId,
     });
 
     // Get user's content filter preference (if authenticated)

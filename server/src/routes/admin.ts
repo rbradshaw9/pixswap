@@ -95,7 +95,7 @@ router.get('/media', async (req: any, res: any) => {
 // Delete content
 router.delete('/media/:contentId', async (req: any, res: any) => {
   try {
-    const content = await Content.findByIdAndDelete(req.params.contentId);
+    const content = await Content.findById(req.params.contentId);
     
     if (!content) {
       return res.status(404).json({
@@ -103,6 +103,15 @@ router.delete('/media/:contentId', async (req: any, res: any) => {
         message: 'Content not found',
       });
     }
+    
+    // Delete from Cloudinary if cloudinaryId exists
+    if (content.cloudinaryId) {
+      const { deleteFromCloudinary } = await import('@/utils/cloudinary');
+      await deleteFromCloudinary(content.cloudinaryId, content.mediaType);
+    }
+    
+    // Delete from database
+    await Content.findByIdAndDelete(req.params.contentId);
     
     res.json({
       success: true,

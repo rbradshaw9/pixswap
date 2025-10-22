@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { UserPlus, Users, Check, X, Clock, Sparkles, MessageCircle } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import { Button } from '@/components/ui/Button';
@@ -27,6 +27,7 @@ interface Friend {
 
 export default function FriendsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated } = useAuthStore();
   const [tab, setTab] = useState<'friends' | 'requests'>('friends');
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -40,6 +41,12 @@ export default function FriendsPage() {
     }
     fetchData();
   }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedTab = params.get('tab') === 'requests' ? 'requests' : 'friends';
+    setTab(requestedTab);
+  }, [location.search]);
 
   const fetchData = async () => {
     setLoading(true);

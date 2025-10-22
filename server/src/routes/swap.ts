@@ -623,11 +623,19 @@ router.post('/content/:contentId/comment', protect, async (req: any, res: any) =
 
     // Get content owner and create notification if different from commenter
     const content = await Content.findById(contentId);
-    if (content && content.userId !== userId && content.userId !== 'seed-user') {
-      const contentOwner = await User.findById(content.userId);
+    const contentOwnerId = content?.userId?.toString?.() ?? content?.userId;
+
+    if (
+      content &&
+      contentOwnerId &&
+      contentOwnerId !== userId &&
+      contentOwnerId !== 'seed-user' &&
+      Types.ObjectId.isValid(contentOwnerId)
+    ) {
+      const contentOwner = await User.findById(contentOwnerId);
       if (contentOwner) {
         await createNotification({
-          userId: content.userId,
+          userId: contentOwnerId,
           type: 'comment',
           title: 'New Comment',
           message: `${username} commented on your ${content.mediaType}`,
@@ -717,11 +725,19 @@ router.post('/content/:contentId/like', protect, async (req: any, res: any) => {
 
       // Get content owner and create notification if different from liker
       const content = await Content.findById(contentId);
-      if (content && content.userId !== userId && content.userId !== 'seed-user') {
-        const contentOwner = await User.findById(content.userId);
+      const contentOwnerId = content?.userId?.toString?.() ?? content?.userId;
+
+      if (
+        content &&
+        contentOwnerId &&
+        contentOwnerId !== userId &&
+        contentOwnerId !== 'seed-user' &&
+        Types.ObjectId.isValid(contentOwnerId)
+      ) {
+        const contentOwner = await User.findById(contentOwnerId);
         if (contentOwner) {
           await createNotification({
-            userId: content.userId,
+            userId: contentOwnerId,
             type: 'like',
             title: 'New Like',
             message: `${username} liked your ${content.mediaType}`,

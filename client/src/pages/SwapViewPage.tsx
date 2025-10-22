@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Copy, SkipForward, UserPlus, Sparkles, Send, Flag, Users } from 'lucide-react';
 import NavBar from '@/components/NavBar';
@@ -47,6 +47,9 @@ export default function SwapViewPage() {
   const [viewsCount, setViewsCount] = useState(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [viewers, setViewers] = useState<Viewer[]>([]);
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const shareMenuRef = useRef<HTMLDivElement | null>(null);
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
   const { nsfwMode, handleNSFWModeChange } = useNSFWMode();
   // Reactions feature removed for v1
   // const [reactionsCount, setReactionsCount] = useState(0);
@@ -147,6 +150,21 @@ export default function SwapViewPage() {
     };
   }, [socket, content?.id]);
 
+  useEffect(() => {
+    if (!shareMenuOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!shareMenuRef.current?.contains(event.target as Node)) {
+        setShareMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [shareMenuOpen]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -243,29 +261,38 @@ export default function SwapViewPage() {
     }
   };
 
-  const handleShare = async () => {
+  const handleNativeShare = async () => {
     const shareUrl = getShareUrl();
     if (!shareUrl) return;
 
+    if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') {
+      await handleCopyLink();
+      return;
+    }
+
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Check out this content on PixSwap',
-          url: shareUrl,
-        });
-        toast.success('Shared!');
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        toast.success('Link copied to clipboard!');
-      }
+      await navigator.share({
+        title: 'Check out this content on PixSwap',
+        url: shareUrl,
+      });
+      toast.success('Shared!');
     } catch (err: any) {
       if (err?.name === 'AbortError') {
         return;
       }
 
       console.error('Share failed:', err);
+      toast.error('Sharing failed');
+    }
+  };
+
+  const handleShareOption = async (option: 'native' | 'copy') => {
+    if (option === 'native') {
+      await handleNativeShare();
+    } else {
       await handleCopyLink();
     }
+    setShareMenuOpen(false);
   };
 
   const handleLike = async () => {
@@ -525,21 +552,38 @@ export default function SwapViewPage() {
                       </button>
                     )}
 
-                    <button 
-                      onClick={handleShare}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all"
-                    >
-                      <Share2 className="w-5 h-5" />
-                      <span className="font-medium hidden sm:inline">Share</span>
-                    </button>
+                    <div className="relative" ref={shareMenuRef}>
+                      <button
+                        onClick={() => setShareMenuOpen((prev) => !prev)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                          shareMenuOpen ? 'bg-white/20 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                        }`}
+                      >
+                        <Share2 className="w-5 h-5" />
+                        <span className="font-medium hidden sm:inline">Share</span>
+                      </button>
 
-                    <button
-                      onClick={handleCopyLink}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all"
-                    >
-                      <Copy className="w-5 h-5" />
-                      <span className="font-medium hidden sm:inline">Copy Link</span>
-                    </button>
+                      {shareMenuOpen && (
+                        <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-white/10 bg-black/85 backdrop-blur-xl text-sm text-gray-100 shadow-2xl z-[1100]">
+                          {canNativeShare && (
+                            <button
+                              onClick={() => handleShareOption('native')}
+                              className="w-full px-4 py-2 flex items-center gap-2 hover:bg-white/10 text-left"
+                            >
+                              <Share2 className="w-4 h-4" />
+                              Share from device
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleShareOption('copy')}
+                            className="w-full px-4 py-2 flex items-center gap-2 hover:bg-white/10 text-left"
+                          >
+                            <Copy className="w-4 h-4" />
+                            Copy link
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     <button 
                       onClick={handleFlag}

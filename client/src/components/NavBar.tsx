@@ -3,6 +3,7 @@ import { Home, Upload, FolderOpen, Users, LogOut, Shield, Sparkles, Heart, Setti
 import { useAuthStore } from '@/stores/auth';
 import NotificationBell from './NotificationBell';
 import NSFWToggle from './NSFWToggle';
+import FriendRequestsDropdown from './FriendRequestsDropdown';
 
 interface NavBarProps {
   variant?: 'default' | 'transparent';
@@ -25,8 +26,8 @@ export default function NavBar({
   const { user, isAuthenticated, logout } = useAuthStore();
 
   const baseClasses = variant === 'transparent' 
-    ? 'border-b border-white/10 bg-black/20 backdrop-blur-xl'
-    : 'border-b border-gray-200 bg-white shadow-sm';
+    ? 'relative z-[1000] border-b border-white/10 bg-black/20 backdrop-blur-xl'
+    : 'relative z-[1000] border-b border-gray-200 bg-white shadow-sm';
 
   const textClasses = variant === 'transparent'
     ? 'text-gray-300 hover:text-white'
@@ -134,6 +135,7 @@ export default function NavBar({
 
             {isAuthenticated ? (
               <>
+                <FriendRequestsDropdown />
                 {/* Notification Bell */}
                 <NotificationBell />
                 

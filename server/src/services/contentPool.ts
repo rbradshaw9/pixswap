@@ -172,7 +172,10 @@ class ContentPool {
     // PRIORITIZE real user content over seed content
     const filterContent = (content: ContentEntry, excludeSeed: boolean = false) => {
       // Don't show user's own content
-      if (content.userId === userId) return false;
+      if (content.userId === userId) {
+        console.log(`🚫 Filtering out own content: ${content.id} (userId: ${userId})`);
+        return false;
+      }
       
       // Optionally exclude seed content
       if (excludeSeed && content.userId === 'seed-user') return false;

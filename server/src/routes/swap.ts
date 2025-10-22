@@ -81,7 +81,7 @@ router.post('/queue', uploadLimiter, optionalAuth, upload.single('image'), async
       contentFilter = req.user.nsfwContentFilter || 'all';
     }
 
-    console.log('🎲 Getting random content with filter:', contentFilter);
+    console.log('🎲 Getting random content with filter:', contentFilter, 'for userId:', userId);
 
     // Get random content from pool based on user's content filter
     let receivedContent = await contentPool.getRandom(userId, isNSFW, contentFilter);
@@ -91,7 +91,16 @@ router.post('/queue', uploadLimiter, optionalAuth, upload.single('image'), async
         id: receivedContent.id,
         isNSFW: receivedContent.isNSFW,
         username: receivedContent.username,
+        contentUserId: receivedContent.userId,
+        requestUserId: userId,
+        isOwnContent: receivedContent.userId === userId,
       });
+      
+      // Safety check: Never return user's own content
+      if (receivedContent.userId === userId) {
+        console.error('❌ ERROR: Got own content! This should not happen. Filtering...');
+        receivedContent = null;
+      }
     }
 
     // If no content available with filter, try without filter but exclude own content

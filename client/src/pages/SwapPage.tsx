@@ -340,11 +340,19 @@ export default function SwapPage() {
         // Got content, navigate to view page
         const contentParam = encodeURIComponent(JSON.stringify(response.data.content));
         navigate(`/view?content=${contentParam}`);
+      } else if (!response.data.success && response.data.isEmpty) {
+        // Empty pool - show encouraging message
+        setError(response.data.message || 'No content available yet. Be the first to share!');
+        setIsUploading(false);
+        // Clear file selection to allow new upload
+        setSelectedFile(null);
+        setPreview('');
       } else {
         if (debugMode) console.log('[DEBUG] Unexpected response format');
         // Handle unexpected response
         console.warn('Unexpected response format:', response.data);
-        setError('Upload succeeded but no content received. Please try again.');
+        setError(response.data.message || 'Upload succeeded but no content received. Please try again.');
+        setIsUploading(false);
       }
     } catch (err: any) {
       console.error('[DEBUG] Upload failed:', err);
@@ -356,7 +364,15 @@ export default function SwapPage() {
           data: err.response?.data
         });
       }
-      setError(err.response?.data?.message || 'Failed to upload photo');
+      
+      // Handle rate limiting
+      if (err.response?.status === 429) {
+        const retryAfter = err.response?.data?.retryAfter;
+        const minutes = retryAfter ? Math.ceil((retryAfter - Date.now() / 1000) / 60) : 15;
+        setError(`You're uploading too quickly! Please wait ${minutes} minute${minutes !== 1 ? 's' : ''} before trying again.`);
+      } else {
+        setError(err.response?.data?.message || 'Failed to upload photo');
+      }
       setIsUploading(false);
     }
   };

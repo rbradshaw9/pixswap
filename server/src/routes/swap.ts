@@ -5,11 +5,28 @@ import { Swap, SwapComment, CommentLike, Content, FriendRequest, User } from '@/
 import { SwapStatus } from '@/types';
 import { contentPool } from '@/services/contentPool';
 import { getIO } from '@/socket';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
+// Rate limiter for uploads - 10 uploads per 15 minutes per IP
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 uploads per windowMs
+  message: 'Too many uploads from this IP. Please try again in 15 minutes.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: any, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'You\'re uploading too quickly! Please wait a few minutes before uploading again.',
+      retryAfter: req.rateLimit?.resetTime ? Math.ceil(req.rateLimit.resetTime / 1000) : Date.now() / 1000 + 900,
+    });
+  },
+});
+
 // Upload and get random content from pool (with optional auth)
-router.post('/queue', optionalAuth, upload.single('image'), async (req: any, res: any) => {
+router.post('/queue', uploadLimiter, optionalAuth, upload.single('image'), async (req: any, res: any) => {
   try {
     // Use authenticated user ID if available, otherwise generate temp ID
     const userId = req.user?._id?.toString() || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

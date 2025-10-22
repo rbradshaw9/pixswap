@@ -603,6 +603,11 @@ class ContentPool {
     }
   }
 
+  // Get pool size
+  getPoolSize(): number {
+    return this.pool.size;
+  }
+
   // Clean up old content (>24 hours)
   cleanup() {
     const now = Date.now();

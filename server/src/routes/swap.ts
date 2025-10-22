@@ -443,7 +443,7 @@ router.post('/:id/friend', protect, async (req: any, res: any) => {
       fromUser: fromUserId.toString(),
       fromUsername,
       metadata: {
-        requestId: friendRequest._id.toString(),
+        requestId: String(friendRequest._id),
       },
     });
 
@@ -621,7 +621,7 @@ router.post('/content/:contentId/comment', protect, async (req: any, res: any) =
           fromUsername: username,
           metadata: {
             contentId,
-            commentId: comment._id.toString(),
+            commentId: String(comment._id),
           },
         });
       }
@@ -949,7 +949,7 @@ router.post('/friend-request/:requestId/accept', protect, async (req: any, res: 
       fromUser: friendRequest.toUser.toString(),
       fromUsername: friendRequest.toUsername,
       metadata: {
-        requestId: friendRequest._id.toString(),
+        requestId: String(friendRequest._id),
       },
     });
 

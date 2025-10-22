@@ -368,11 +368,10 @@ export default function MessagesPage() {
       if (mediaMode === 'upload' && selectedFile) {
         // Upload new file
         const formData = new FormData();
-        formData.append('media', selectedFile);
+        formData.append('file', selectedFile);
         formData.append('content', newMessage.trim() || 'Sent a file');
-        if (expiryMinutes) {
-          const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
-          formData.append('expiresAt', expiresAt.toISOString());
+        if (expiryMinutes !== null && expiryMinutes !== undefined) {
+          formData.append('expiryMinutes', expiryMinutes.toString());
         }
 
         const axiosInstance = api.getInstance();
@@ -860,7 +859,9 @@ export default function MessagesPage() {
                       {userUploads.map((upload) => (
                         <button
                           key={upload.id}
-                          onClick={() => setSelectedUploadId(upload.id)}
+                          onClick={() => setSelectedUploadId(
+                            selectedUploadId === upload.id ? null : upload.id
+                          )}
                           className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
                             selectedUploadId === upload.id
                               ? 'border-purple-500 scale-95'

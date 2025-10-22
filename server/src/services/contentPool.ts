@@ -169,9 +169,13 @@ class ContentPool {
     }
     
     // Filter available content based on user's content filter preference
-    const available = Array.from(this.pool.values()).filter(content => {
+    // PRIORITIZE real user content over seed content
+    const filterContent = (content: ContentEntry, excludeSeed: boolean = false) => {
       // Don't show user's own content
       if (content.userId === userId) return false;
+      
+      // Optionally exclude seed content
+      if (excludeSeed && content.userId === 'seed-user') return false;
       
       // Don't show already seen content
       if (seenContent.has(content.id)) return false;
@@ -187,12 +191,23 @@ class ContentPool {
         // 'all' mode: show everything
         return true;
       }
-    });
+    };
+
+    // First try to get real user content (excluding seed)
+    let available = Array.from(this.pool.values()).filter(content => filterContent(content, true));
+
+    // If no real user content, include seed content as fallback
+    if (available.length === 0) {
+      console.log('⚠️ No real user content available, including seed content...');
+      available = Array.from(this.pool.values()).filter(content => filterContent(content, false));
+    }
 
     if (available.length === 0) {
       // If no unseen content, allow re-showing content (reset seen list)
-      const resetAvailable = Array.from(this.pool.values()).filter(content => {
+      // First try real user content
+      let resetAvailable = Array.from(this.pool.values()).filter(content => {
         if (content.userId === userId) return false;
+        if (content.userId === 'seed-user') return false; // Exclude seed in first pass
         
         // Apply same filter logic
         if (contentFilter === 'sfw') {
@@ -203,6 +218,23 @@ class ContentPool {
           return true;
         }
       });
+
+      // If no real user content, include seed content
+      if (resetAvailable.length === 0) {
+        console.log('⚠️ No real user content to reset, including seed content...');
+        resetAvailable = Array.from(this.pool.values()).filter(content => {
+          if (content.userId === userId) return false;
+          
+          // Apply same filter logic
+          if (contentFilter === 'sfw') {
+            return !content.isNSFW;
+          } else if (contentFilter === 'nsfw') {
+            return content.isNSFW;
+          } else {
+            return true;
+          }
+        });
+      }
 
       if (resetAvailable.length === 0) {
         return null;

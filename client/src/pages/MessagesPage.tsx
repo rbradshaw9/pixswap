@@ -113,12 +113,17 @@ export default function MessagesPage() {
     try {
       setLoadingUploads(true);
       const response = await api.get<{ content: any[] }>(`/user/profile/${user.username}`);
+      console.log('Full profile response:', response);
       if (response.success && response.data?.content) {
-        const uploads: UserUpload[] = response.data.content.map((item: any) => ({
-          id: item._id,
-          mediaUrl: item.mediaUrl,
-          mediaType: item.mediaType
-        }));
+        console.log('Raw content:', response.data.content);
+        const uploads: UserUpload[] = response.data.content.map((item: any) => {
+          console.log('Mapping item:', item, 'ID:', item._id, 'id:', item.id);
+          return {
+            id: item._id || item.id,
+            mediaUrl: item.mediaUrl,
+            mediaType: item.mediaType
+          };
+        });
         console.log('Loaded uploads:', uploads);
         setUserUploads(uploads);
       }

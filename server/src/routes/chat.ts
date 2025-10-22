@@ -218,14 +218,24 @@ router.get('/rooms/:roomId/messages', protect, async (req: any, res: any) => {
       .populate('sender', 'username displayName avatar')
       .lean();
 
-    await Message.updateMany(
-      {
-        chatRoom: roomId,
-        sender: { $ne: currentUserObjectId },
-        status: { $ne: MessageStatus.READ },
-      },
-      { status: MessageStatus.READ }
-    );
+    // Mark messages as read and handle "after seen" expiry
+    const messagesToUpdate = await Message.find({
+      chatRoom: roomId,
+      sender: { $ne: currentUserObjectId },
+      status: { $ne: MessageStatus.READ },
+    });
+
+    for (const msg of messagesToUpdate) {
+      const updateData: any = { status: MessageStatus.READ };
+      
+      // If message has mediaUrl and no expiresAt set, it means "after seen"
+      if (msg.mediaUrl && !msg.expiresAt) {
+        // Set expiry to 10 seconds after being seen
+        updateData.expiresAt = new Date(Date.now() + 10 * 1000);
+      }
+      
+      await Message.updateOne({ _id: msg._id }, updateData);
+    }
 
     const formatted = messages
       .reverse()

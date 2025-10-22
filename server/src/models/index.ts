@@ -10,3 +10,4 @@ export { Content } from './Content';
 export { CommentLike } from './CommentLike';
 export { UserContentView } from './UserContentView';
 export { FriendRequest } from './FriendRequest';
+export { Notification } from './Notification';

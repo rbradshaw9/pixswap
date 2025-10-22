@@ -26,6 +26,7 @@ import chatRoutes from '@/routes/chat';
 import swapRoutes from '@/routes/swap';
 import adminRoutes from '@/routes/admin';
 import reportsRoutes from '@/routes/reports';
+import notificationRoutes from '@/routes/notifications';
 
 // Load environment variables
 dotenv.config();
@@ -95,6 +96,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/swap', swapRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Socket.IO setup
 setIO(io);

@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import * as nsfwjs from 'nsfwjs';
 import imageCompression from 'browser-image-compression';
+import toast from 'react-hot-toast';
 
 export default function SwapPage() {
   const navigate = useNavigate();
@@ -25,6 +26,8 @@ export default function SwapPage() {
   const [nsfwPredictions, setNsfwPredictions] = useState<any>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [debugMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('debug') === 'true';
@@ -154,7 +157,8 @@ export default function SwapPage() {
     const isImage = file.type.startsWith('image/');
 
     if (!isImage && !isVideo) {
-      setError('Please select an image or video file');
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'unknown';
+      setError(`File type "${fileExt}" is not supported. Please select an image (JPG, PNG, GIF, WebP) or video (MP4, WebM, MOV) file.`);
       return;
     }
 
@@ -212,47 +216,76 @@ export default function SwapPage() {
 
         setCompressionProgress(100);
       } else if (isImage) {
-        // Compress image
-        setCompressionProgress(20);
+        // Check if it's a GIF
+        const isGif = file.type === 'image/gif';
         
-        if (debugMode) console.log('[DEBUG] Starting image compression', { originalSize: file.size });
-        
-        const options = {
-          maxSizeMB: 2.0, // 2MB max for better quality
-          maxWidthOrHeight: 2048, // Max dimension
-          useWebWorker: true,
-          maxIteration: 10, // Limit iterations
-          onProgress: (progress: number) => {
-            if (debugMode) console.log('[DEBUG] Compression progress:', progress);
-            setCompressionProgress(20 + progress * 0.6); // 20-80%
-          },
-        };
-
-        try {
-          processedFile = await imageCompression(file, options);
-          if (debugMode) console.log('[DEBUG] Compression complete', { newSize: processedFile.size });
-          setCompressionProgress(80);
-        } catch (compressionErr) {
-          console.error('[DEBUG] Compression failed, using original file:', compressionErr);
-          // If compression fails, use original file if it's under 5MB
-          if (file.size > 5 * 1024 * 1024) {
-            setError('Image is too large and compression failed. Please select a smaller image.');
+        if (isGif) {
+          // GIFs: Skip compression to preserve animation, but enforce size limit
+          const sizeMB = file.size / (1024 * 1024);
+          const maxGifSizeMB = 10; // 10MB limit for GIFs
+          
+          if (sizeMB > maxGifSizeMB) {
+            setError(`GIF is too large (${sizeMB.toFixed(1)}MB). Please select a GIF under ${maxGifSizeMB}MB.`);
             setIsCompressing(false);
             return;
           }
+          
+          console.log(`🎬 GIF accepted: ${sizeMB.toFixed(1)}MB (no compression to preserve animation)`);
           processedFile = file;
-          setCompressionProgress(80);
+          setCompressionProgress(50);
+          
+          // Still analyze for NSFW
+          const reader = new FileReader();
+          const imageData = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+          
+          await analyzeImage(imageData);
+          setCompressionProgress(100);
+        } else {
+          // Regular images: Compress as normal
+          setCompressionProgress(20);
+          
+          if (debugMode) console.log('[DEBUG] Starting image compression', { originalSize: file.size });
+          
+          const options = {
+            maxSizeMB: 2.0, // 2MB max for better quality
+            maxWidthOrHeight: 2048, // Max dimension
+            useWebWorker: true,
+            maxIteration: 10, // Limit iterations
+            onProgress: (progress: number) => {
+              if (debugMode) console.log('[DEBUG] Compression progress:', progress);
+              setCompressionProgress(20 + progress * 0.6); // 20-80%
+            },
+          };
+
+          try {
+            processedFile = await imageCompression(file, options);
+            if (debugMode) console.log('[DEBUG] Compression complete', { newSize: processedFile.size });
+            setCompressionProgress(80);
+          } catch (compressionErr) {
+            console.error('[DEBUG] Compression failed, using original file:', compressionErr);
+            // If compression fails, use original file if it's under 5MB
+            if (file.size > 5 * 1024 * 1024) {
+              setError('Image is too large and compression failed. Please select a smaller image.');
+              setIsCompressing(false);
+              return;
+            }
+            processedFile = file;
+            setCompressionProgress(80);
+          }
+
+          // Analyze compressed image
+          const reader = new FileReader();
+          const imageData = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(processedFile);
+          });
+
+          await analyzeImage(imageData);
+          setCompressionProgress(100);
         }
-
-        // Analyze compressed image
-        const reader = new FileReader();
-        const imageData = await new Promise<string>((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(processedFile);
-        });
-
-        await analyzeImage(imageData);
-        setCompressionProgress(100);
       }
 
       setSelectedFile(processedFile);
@@ -321,9 +354,16 @@ export default function SwapPage() {
       if (debugMode) console.log('[DEBUG] API baseURL:', baseURL);
       if (debugMode) console.log('[DEBUG] Posting to: /swap/queue');
       
+      setUploadProgress(0);
       const response = await axiosInstance.post('/swap/queue', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percent);
+          }
         },
       });
 
@@ -337,11 +377,16 @@ export default function SwapPage() {
 
       if (response.data.success && response.data.content) {
         console.log('➡️ Navigating to view page');
+        toast.success('🎉 Upload successful! Here\'s your match!', { duration: 3000 });
         // Got content, navigate to view page
         const contentParam = encodeURIComponent(JSON.stringify(response.data.content));
         navigate(`/view?content=${contentParam}`);
       } else if (!response.data.success && response.data.isEmpty) {
         // Empty pool - show encouraging message
+        toast('📭 No matches available yet. Your content is in the queue!', { 
+          icon: '⏳',
+          duration: 5000 
+        });
         setError(response.data.message || 'No content available yet. Be the first to share!');
         setIsUploading(false);
         // Clear file selection to allow new upload
@@ -516,10 +561,27 @@ export default function SwapPage() {
               {!preview ? (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="group relative border-2 border-dashed border-purple-400/30 hover:border-purple-400/60 rounded-3xl p-20 text-center cursor-pointer transition-all duration-500 bg-gradient-to-br from-purple-500/5 to-pink-500/5 hover:from-purple-500/10 hover:to-pink-500/10 overflow-hidden"
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0 && fileInputRef.current) {
+                      const dataTransfer = new DataTransfer();
+                      dataTransfer.items.add(files[0]);
+                      fileInputRef.current.files = dataTransfer.files;
+                      handleFileSelect({ target: fileInputRef.current } as any);
+                    }
+                  }}
+                  className={`group relative border-2 border-dashed rounded-3xl p-20 text-center cursor-pointer transition-all duration-500 overflow-hidden ${
+                    isDragging 
+                      ? 'border-purple-400 bg-gradient-to-br from-purple-500/20 to-pink-500/20 scale-105' 
+                      : 'border-purple-400/30 hover:border-purple-400/60 bg-gradient-to-br from-purple-500/5 to-pink-500/5 hover:from-purple-500/10 hover:to-pink-500/10'
+                  }`}
                 >
                   {/* Animated background */}
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <div className={`absolute inset-0 transition-opacity duration-500 ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                     <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-purple-500/10 to-pink-500/10 animate-pulse"></div>
                   </div>
                   
@@ -531,8 +593,9 @@ export default function SwapPage() {
                     <p className="text-lg text-gray-300 mb-2">
                       Click or drag to upload
                     </p>
-                    <p className="text-sm text-gray-400">
-                      Images auto-compressed • Videos up to 100MB (2min max)
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      <span className="font-semibold text-purple-300">Images:</span> JPG, PNG, GIF (animated supported!), WebP • Auto-compress to 2MB<br/>
+                      <span className="font-semibold text-pink-300">Videos:</span> MP4, WebM, MOV • Up to 100MB, 2 min max
                     </p>
                   </div>
                 </div>
@@ -542,7 +605,9 @@ export default function SwapPage() {
                     <video
                       src={preview}
                       controls
-                      className="w-full h-[500px] object-cover"
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-[500px] object-contain bg-black"
                     />
                   ) : (
                     <img
@@ -551,7 +616,7 @@ export default function SwapPage() {
                       className="w-full h-[500px] object-cover"
                     />
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
                   
                   <div className="absolute top-6 right-6 flex gap-3">
                     <Button
@@ -575,9 +640,19 @@ export default function SwapPage() {
                   <div className="absolute bottom-6 left-6 right-6">
                     <div className="bg-black/50 backdrop-blur-xl rounded-2xl p-4 border border-white/20">
                       <p className="text-white font-semibold mb-1">Ready to swap</p>
-                      <p className="text-gray-300 text-sm">
+                      <p className="text-gray-300 text-sm mb-2">
                         Your {fileType} will be shared with someone random
                       </p>
+                      {selectedFile && (
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-400 text-xs">
+                            {fileType === 'video' ? '🎬 Video' : fileType === 'image' && selectedFile.type === 'image/gif' ? '🎬 GIF' : '📷 Image'} • {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                          <p className="text-gray-500 text-xs">
+                            {selectedFile.name.length > 20 ? selectedFile.name.substring(0, 20) + '...' : selectedFile.name}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -636,9 +711,9 @@ export default function SwapPage() {
               )}
 
               {error && (
-                <div className="mt-6 flex items-center gap-3 p-5 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-200 backdrop-blur-sm">
+                <div className="mt-6 flex items-start gap-3 p-5 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-200 backdrop-blur-sm">
                   <AlertCircle className="w-6 h-6 flex-shrink-0" />
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium">{error}</p>
                     {nsfwDetected && (
                       <button
@@ -646,6 +721,17 @@ export default function SwapPage() {
                         className="mt-2 text-sm underline hover:text-orange-300 transition-colors"
                       >
                         Enable NSFW mode
+                      </button>
+                    )}
+                    {!nsfwDetected && selectedFile && (
+                      <button
+                        onClick={() => {
+                          setError('');
+                          setIsUploading(false);
+                        }}
+                        className="mt-3 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Dismiss
                       </button>
                     )}
                   </div>
@@ -690,7 +776,7 @@ export default function SwapPage() {
                 ) : isUploading ? (
                   <>
                     <div className="loading-spinner mr-3" />
-                    Finding your match...
+                    {uploadProgress > 0 && uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : 'Finding your match...'}
                   </>
                 ) : (
                   <>

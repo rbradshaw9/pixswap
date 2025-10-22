@@ -230,6 +230,33 @@ router.patch('/nsfw-preference', protect, async (req: any, res: any) => {
   }
 });
 
+// Get user's friends
+router.get('/friends', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id;
+    
+    const user = await User.findById(userId).populate('friends', 'username displayName avatar');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user.friends || [],
+    });
+  } catch (error: any) {
+    console.error('Get friends error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get friends',
+    });
+  }
+});
+
 router.get('/search', optionalAuth, async (req, res) => {
   res.json({ message: 'Search users - TODO' });
 });

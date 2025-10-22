@@ -31,6 +31,7 @@ export default function MyUploadsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingCaption, setEditingCaption] = useState<string | null>(null);
   const [newCaption, setNewCaption] = useState('');
+  const [filter, setFilter] = useState<'all' | 'images' | 'videos' | 'saved'>('all');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -190,12 +191,68 @@ export default function MyUploadsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent mb-2">
-            My Uploads
-          </h1>
-          <p className="text-gray-400">
-            {user?.displayName || user?.username}'s content • {uploads.length} upload{uploads.length !== 1 ? 's' : ''}
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent mb-2">
+                My Uploads
+              </h1>
+              <p className="text-gray-400">
+                {user?.displayName || user?.username}'s content • {uploads.filter(u => {
+                  if (filter === 'images') return u.mediaType === 'image';
+                  if (filter === 'videos') return u.mediaType === 'video';
+                  if (filter === 'saved') return u.savedForever;
+                  return true;
+                }).length} of {uploads.length} upload{uploads.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          
+          {/* Filter Buttons */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                filter === 'all'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              All ({uploads.length})
+            </button>
+            <button
+              onClick={() => setFilter('images')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                filter === 'images'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" />
+              Images ({uploads.filter(u => u.mediaType === 'image').length})
+            </button>
+            <button
+              onClick={() => setFilter('videos')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                filter === 'videos'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              <Video className="w-4 h-4" />
+              Videos ({uploads.filter(u => u.mediaType === 'video').length})
+            </button>
+            <button
+              onClick={() => setFilter('saved')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                filter === 'saved'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              Saved ({uploads.filter(u => u.savedForever).length})
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -217,7 +274,12 @@ export default function MyUploadsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {uploads.map((upload) => (
+            {uploads.filter(u => {
+              if (filter === 'images') return u.mediaType === 'image';
+              if (filter === 'videos') return u.mediaType === 'video';
+              if (filter === 'saved') return u.savedForever;
+              return true;
+            }).map((upload) => (
               <div
                 key={upload.id}
                 onClick={() => handleCardClick(upload)}

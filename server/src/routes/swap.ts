@@ -5,6 +5,7 @@ import { Swap, SwapComment, CommentLike, Content, FriendRequest, User } from '@/
 import { SwapStatus } from '@/types';
 import { contentPool } from '@/services/contentPool';
 import { getIO } from '@/socket';
+import { createNotification } from '@/services/notificationService';
 import rateLimit from 'express-rate-limit';
 
 const router = Router();
@@ -432,6 +433,20 @@ router.post('/:id/friend', protect, async (req: any, res: any) => {
       status: 'pending',
     });
 
+    // Create notification
+    await createNotification({
+      userId: friendUserId.toString(),
+      type: 'friend_request',
+      title: 'New Friend Request',
+      message: `${fromUsername} sent you a friend request`,
+      actionUrl: `/friends`,
+      fromUser: fromUserId.toString(),
+      fromUsername,
+      metadata: {
+        requestId: friendRequest._id.toString(),
+      },
+    });
+
     // Emit socket event to notify user
     const io = getIO();
     io.to(friendUserId.toString()).emit('friend:request', {
@@ -591,6 +606,27 @@ router.post('/content/:contentId/comment', protect, async (req: any, res: any) =
     // Update content pool comment count
     await contentPool.addComment(contentId);
 
+    // Get content owner and create notification if different from commenter
+    const content = await Content.findById(contentId);
+    if (content && content.userId !== userId && content.userId !== 'seed-user') {
+      const contentOwner = await User.findById(content.userId);
+      if (contentOwner) {
+        await createNotification({
+          userId: content.userId,
+          type: 'comment',
+          title: 'New Comment',
+          message: `${username} commented on your ${content.mediaType}`,
+          actionUrl: `/swap/${contentId}`,
+          fromUser: userId,
+          fromUsername: username,
+          metadata: {
+            contentId,
+            commentId: comment._id.toString(),
+          },
+        });
+      }
+    }
+
     console.log('💬 Comment added:', { contentId, username, commentId: comment._id });
 
     res.json({
@@ -641,6 +677,26 @@ router.post('/content/:contentId/like', protect, async (req: any, res: any) => {
         type: 'like',
         text: '', // Not required for likes
       });
+
+      // Get content owner and create notification if different from liker
+      const content = await Content.findById(contentId);
+      if (content && content.userId !== userId && content.userId !== 'seed-user') {
+        const contentOwner = await User.findById(content.userId);
+        if (contentOwner) {
+          await createNotification({
+            userId: content.userId,
+            type: 'like',
+            title: 'New Like',
+            message: `${username} liked your ${content.mediaType}`,
+            actionUrl: `/swap/${contentId}`,
+            fromUser: userId,
+            fromUsername: username,
+            metadata: {
+              contentId,
+            },
+          });
+        }
+      }
 
       // Update content pool reaction count
       await contentPool.addReaction(contentId);
@@ -814,6 +870,23 @@ router.post('/content/:contentId/comment/:commentId/like', protect, async (req: 
         $inc: { likes: 1 }
       });
       liked = true;
+
+      // Create notification for comment author (if different from liker)
+      if (comment.author.toString() !== userId.toString()) {
+        await createNotification({
+          userId: comment.author.toString(),
+          type: 'comment_like',
+          title: 'Comment Liked',
+          message: `${req.user.username} liked your comment`,
+          actionUrl: `/swap/${comment.contentId}`,
+          fromUser: userId.toString(),
+          fromUsername: req.user.username,
+          metadata: {
+            commentId,
+            contentId: comment.contentId,
+          },
+        });
+      }
     }
 
     res.json({
@@ -864,6 +937,20 @@ router.post('/friend-request/:requestId/accept', protect, async (req: any, res: 
     });
     await User.findByIdAndUpdate(friendRequest.toUser, {
       $addToSet: { friends: friendRequest.fromUser }
+    });
+
+    // Create notification for requester
+    await createNotification({
+      userId: friendRequest.fromUser.toString(),
+      type: 'friend_accepted',
+      title: 'Friend Request Accepted',
+      message: `${friendRequest.toUsername} accepted your friend request`,
+      actionUrl: `/friends`,
+      fromUser: friendRequest.toUser.toString(),
+      fromUsername: friendRequest.toUsername,
+      metadata: {
+        requestId: friendRequest._id.toString(),
+      },
     });
 
     // Emit socket event

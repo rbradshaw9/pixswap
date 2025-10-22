@@ -63,6 +63,12 @@ export const setupSocket = (io: SocketIOServer): void => {
     }
     userSockets.get(userId)?.push(socket.id);
 
+    // Join user-specific room for notifications
+    if (!userId.startsWith('temp-')) {
+      socket.join(`user:${userId}`);
+      console.log(`🔔 User ${username} joined notification room user:${userId}`);
+    }
+
     // Emit user online status
     socket.broadcast.emit('user:online', {
       userId,

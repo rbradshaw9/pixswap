@@ -30,6 +30,9 @@ export default function SwapViewPage() {
   const [isNSFW, setIsNSFW] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [viewsCount, setViewsCount] = useState(0);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // Reactions feature removed for v1
   // const [reactionsCount, setReactionsCount] = useState(0);
 
@@ -58,6 +61,30 @@ export default function SwapViewPage() {
       }
     }
   }, [searchParams]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (e.key === 'ArrowRight' || e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === 'ArrowLeft' || e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        navigate('/');
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        handleLike();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [content, isAuthenticated, liked]);
 
   const fetchComments = async (contentId: string) => {
     try {
@@ -163,6 +190,7 @@ export default function SwapViewPage() {
 
       if (response.success) {
         setComment('');
+        setShowEmojiPicker(false);
         toast.success('💬 Comment posted!');
         // Refresh comments
         await fetchComments(content.id);
@@ -173,6 +201,34 @@ export default function SwapViewPage() {
     } finally {
       setSubmittingComment(false);
     }
+  };
+
+  const handleCommentLike = async (commentId: string) => {
+    if (!isAuthenticated) {
+      toast.error('Please login to like comments');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const response = await api.post(`/swap/comment/${commentId}/like`);
+      if (response.success) {
+        // Refresh comments to show updated likes
+        await fetchComments(content.id);
+        const data = response.data as any;
+        if (data?.liked) {
+          toast.success('💙 Liked!', { duration: 1000 });
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to like comment:', err);
+      toast.error(err.response?.data?.message || 'Failed to like comment');
+    }
+  };
+
+  const addEmoji = (emoji: string) => {
+    setComment(prev => prev + emoji);
+    setShowEmojiPicker(false);
   };
 
   const handleFriendRequest = async () => {
@@ -233,8 +289,9 @@ export default function SwapViewPage() {
         await fetchComments(newContent.id);
         // View tracking happens server-side
       } else {
-        toast(response.data.message || 'No more content available', {
-          icon: 'ℹ️',
+        toast('📭 No more content available. Upload something new!', {
+          icon: '⏸️',
+          duration: 4000,
         });
       }
     } catch (err: any) {
@@ -286,6 +343,13 @@ export default function SwapViewPage() {
               
               {/* Action Bar */}
               <div className="p-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+                {/* Keyboard shortcuts hint */}
+                <div className="mb-3 px-2">
+                  <p className="text-xs text-gray-400 text-center">
+                    💡 Tip: Press <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white text-xs">L</kbd> to like, <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white text-xs">→</kbd> or <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white text-xs">N</kbd> for next, <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white text-xs">←</kbd> to go back
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
                     <button
@@ -331,9 +395,14 @@ export default function SwapViewPage() {
                   <Button
                     onClick={handleNext}
                     disabled={loading}
-                    className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
-                    {loading ? 'Loading...' : (
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
                       <>
                         <SkipForward className="w-5 h-5" />
                         Next
@@ -360,14 +429,50 @@ export default function SwapViewPage() {
 
               {/* Comment Input */}
               <div className="space-y-3 mb-6">
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder={isAuthenticated ? "Say something nice... 💬" : "Login to comment..."}
-                  disabled={!isAuthenticated}
-                  className="w-full h-24 px-4 py-3 bg-black/20 border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
-                  maxLength={500}
-                />
+                <div className="relative">
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        handleComment();
+                      }
+                    }}
+                    placeholder={isAuthenticated ? "Say something nice... 💬 (Cmd/Ctrl + Enter to post)" : "Login to comment..."}
+                    disabled={!isAuthenticated}
+                    className="w-full h-24 px-4 py-3 bg-black/20 border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    maxLength={500}
+                  />
+                  <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{comment.length}/500</span>
+                    {isAuthenticated && (
+                      <button
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                        title="Add emoji"
+                      >
+                        😊
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Quick Emoji Picker */}
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-full right-0 mb-2 bg-gray-900 border border-white/20 rounded-xl p-3 shadow-xl z-10">
+                      <div className="grid grid-cols-5 gap-2">
+                        {['❤️', '😂', '😍', '🔥', '👍', '👏', '🎉', '💯', '🙌', '✨'].map(emoji => (
+                          <button
+                            key={emoji}
+                            onClick={() => addEmoji(emoji)}
+                            className="text-2xl hover:scale-125 transition-transform"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <Button
                   onClick={handleComment}
@@ -386,16 +491,16 @@ export default function SwapViewPage() {
                     No comments yet. Be the first! 💬
                   </p>
                 ) : (
-                  comments.map((c) => (
+                  comments.map((c: any) => (
                     <div
                       key={c._id}
-                      className="bg-black/20 rounded-xl p-4 border border-white/10"
+                      className="bg-black/20 rounded-xl p-4 border border-white/10 hover:border-white/20 transition-colors group"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                           {c.username.charAt(0).toUpperCase()}
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-semibold text-white text-sm">
                               {c.username}
@@ -404,9 +509,27 @@ export default function SwapViewPage() {
                               {new Date(c.createdAt).toLocaleDateString()}
                             </span>
                           </div>
-                          <p className="text-gray-300 text-sm leading-relaxed">
+                          <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap break-words">
                             {c.text}
                           </p>
+                          
+                          {/* Comment Actions */}
+                          <div className="flex items-center gap-3 mt-2">
+                            <button
+                              onClick={() => handleCommentLike(c._id)}
+                              disabled={!isAuthenticated}
+                              className={`flex items-center gap-1 text-xs transition-colors ${
+                                c.liked 
+                                  ? 'text-pink-400' 
+                                  : 'text-gray-500 hover:text-pink-400'
+                              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              title={isAuthenticated ? 'Like comment' : 'Login to like'}
+                            >
+                              <Heart className={`w-3.5 h-3.5 ${c.liked ? 'fill-current' : ''}`} />
+                              {c.likes > 0 && <span className="font-medium">{c.likes}</span>}
+                            </button>
+                            {/* Could add reply feature here in future */}
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, Upload, FolderOpen, Users, LogOut, Shield, Sparkles, Heart, Settings } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
+import NotificationBell from './NotificationBell';
 
 interface NavBarProps {
   variant?: 'default' | 'transparent';
@@ -113,6 +114,9 @@ export default function NavBar({
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
               <>
+                {/* Notification Bell */}
+                <NotificationBell />
+                
                 <Link 
                   to={`/profile/${user?.username}`}
                   className={`hidden sm:flex items-center gap-2 ${textClasses} hover:underline transition-colors`}

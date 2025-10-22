@@ -19,11 +19,13 @@ export default function ProtectedMedia({
   username = 'PixSwap'
 }: ProtectedMediaProps) {
   const [blobUrl, setBlobUrl] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
   const mediaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Fetch media and convert to blob URL for additional protection
     const loadProtectedMedia = async () => {
+      setIsLoading(true);
       try {
         const response = await fetch(mediaUrl);
         const blob = await response.blob();
@@ -36,6 +38,8 @@ export default function ProtectedMedia({
         console.error('Failed to load protected media:', error);
         // Fallback to direct URL
         setBlobUrl(mediaUrl);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -59,12 +63,17 @@ export default function ProtectedMedia({
     e.preventDefault();
   };
 
-  if (!blobUrl) {
+  if (!blobUrl || isLoading) {
     return (
-      <div className={`${className} flex items-center justify-center bg-gray-800/50`}>
+      <div className={`${className} flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800`}>
         <div className="text-center">
-          <Eye className="w-12 h-12 text-gray-400 mx-auto mb-2 animate-pulse" />
-          <p className="text-gray-400">Loading...</p>
+          <Eye className="w-12 h-12 text-purple-400 mx-auto mb-3 animate-pulse" />
+          <p className="text-gray-300 font-medium">Loading {mediaType}...</p>
+          <div className="mt-3 flex justify-center gap-1">
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
         </div>
       </div>
     );
@@ -99,15 +108,20 @@ export default function ProtectedMedia({
           src={blobUrl}
           className={className}
           controls
-          controlsList="nodownload nofullscreen"
+          controlsList="nodownload"
           disablePictureInPicture
+          playsInline
+          preload="metadata"
           onContextMenu={handleContextMenu}
           onDragStart={handleDragStart}
           style={{
             userSelect: 'none',
             WebkitUserSelect: 'none',
+            backgroundColor: '#000',
           }}
-        />
+        >
+          <p className="text-white p-4">Your browser doesn't support video playback.</p>
+        </video>
       )}
       
       {/* Invisible overlay to prevent direct interaction */}

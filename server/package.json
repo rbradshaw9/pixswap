@@ -4,10 +4,12 @@
   "description": "PixSwap backend API - privacy-first creative media sharing platform",
   "main": "dist/server.js",
   "scripts": {
-    "start": "node scripts/ensureAdmin.js && node dist/server.js",
+    "start": "node scripts/ensureAdmin.js && node scripts/seedContent.js && node dist/server.js",
     "dev": "nodemon -r tsconfig-paths/register src/server.ts",
     "build": "tsc && tsc-alias",
     "ensure-admin": "node scripts/ensureAdmin.js",
+    "seed": "node scripts/seedContent.js",
+    "seed:force": "node scripts/seedContent.js --force",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

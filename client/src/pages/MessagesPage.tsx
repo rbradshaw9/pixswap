@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useSocket } from '@/hooks/useSocket';
+import { useNotifications } from '@/context/NotificationContext';
 
 interface ParticipantSummary {
   _id: string;
@@ -21,6 +22,7 @@ interface ChatMessage {
   type: string;
   content: string;
   mediaUrl?: string | null;
+  expiresAt?: string | null;
   status: string;
   createdAt: string;
   sender: ParticipantSummary | null;
@@ -62,6 +64,7 @@ export default function MessagesPage() {
   const { username: targetUsername } = useParams<{ username?: string }>();
   const { isAuthenticated, user } = useAuthStore();
   const socket = useSocket();
+  const { notifications, markAsRead } = useNotifications();
 
   const [rooms, setRooms] = useState<ChatRoomSummary[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -239,6 +242,24 @@ export default function MessagesPage() {
               room._id === selectedRoomId ? { ...room, unreadCount: 0 } : room
             )
           );
+
+          // Mark notifications as read for this chat
+          const room = rooms.find((r) => r._id === selectedRoomId);
+          if (room) {
+            const chatNotifications = notifications.filter((n) => {
+              if (!n.actionUrl) return false;
+              // Match notifications for messages from participants in this room
+              return room.participants.some((p) => 
+                n.actionUrl?.includes(`/messages/${p.username}`)
+              );
+            });
+            
+            for (const notification of chatNotifications) {
+              if (!notification.read && notification.id) {
+                await markAsRead(notification.id);
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to load messages:', error);
@@ -624,20 +645,27 @@ export default function MessagesPage() {
                                 {message.sender?.displayName || message.sender?.username || 'Guest'}
                               </p>
                             )}
-                            {isMedia && message.mediaUrl && (
+                            {isMedia && (
                               <div className="mb-2">
-                                {message.type === 'image' ? (
-                                  <img
-                                    src={message.mediaUrl}
-                                    alt="Shared image"
-                                    className="rounded-lg max-w-full h-auto"
-                                  />
+                                {message.mediaUrl ? (
+                                  message.type === 'image' ? (
+                                    <img
+                                      src={message.mediaUrl}
+                                      alt="Shared image"
+                                      className="rounded-lg max-w-full h-auto"
+                                    />
+                                  ) : (
+                                    <video
+                                      src={message.mediaUrl}
+                                      controls
+                                      className="rounded-lg max-w-full h-auto"
+                                    />
+                                  )
                                 ) : (
-                                  <video
-                                    src={message.mediaUrl}
-                                    controls
-                                    className="rounded-lg max-w-full h-auto"
-                                  />
+                                  <div className="p-4 bg-black/30 rounded-lg border border-white/20 text-center">
+                                    <Clock className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                                    <p className="text-sm text-gray-400">Media expired</p>
+                                  </div>
                                 )}
                               </div>
                             )}

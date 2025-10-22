@@ -1,4 +1,5 @@
 import { Schema, model } from 'mongoose';
+import { v2 as cloudinary } from 'cloudinary';
 import { IMessage, MessageType, MessageStatus } from '@/types';
 
 const messageSchema = new Schema<IMessage>({
@@ -72,6 +73,25 @@ messageSchema.index({ status: 1 });
 // Don't return deleted messages in queries by default
 messageSchema.pre(/^find/, function(this: any) {
   this.find({ deletedAt: { $eq: null } });
+});
+
+// Delete media from Cloudinary when message is deleted (including TTL expiration)
+messageSchema.pre('deleteOne', async function(this: any) {
+  try {
+    const doc = await this.model.findOne(this.getFilter());
+    if (doc?.mediaUrl) {
+      // Extract public_id from Cloudinary URL
+      const urlParts = doc.mediaUrl.split('/');
+      const filename = urlParts[urlParts.length - 1];
+      const publicId = `PixSwap/${filename.split('.')[0]}`;
+      
+      await cloudinary.uploader.destroy(publicId).catch(err => {
+        console.error('Failed to delete from Cloudinary:', err);
+      });
+    }
+  } catch (error) {
+    console.error('Error in deleteOne pre-hook:', error);
+  }
 });
 
 export const Message = model<IMessage>('Message', messageSchema);

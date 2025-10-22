@@ -19,6 +19,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import AdminPage from '@/pages/AdminPage';
 import ProfilePage from '@/pages/ProfilePage';
 import FriendsPage from '@/pages/FriendsPage';
+import MessagesPage from '@/pages/MessagesPage';
 
 // Components
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -50,6 +51,8 @@ function App() {
             <Route path="/my-uploads" element={<MyUploadsPage />} />
             <Route path="/liked-posts" element={<LikedPostsPage />} />
             <Route path="/friends" element={<FriendsPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/messages/:username" element={<MessagesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/profile/:username" element={<ProfilePage />} />
             <Route path="/swap/:swapId" element={<SwapChatPage />} />

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { Types } from 'mongoose';
 import { upload } from '@/middleware/upload';
 import { optionalAuth, protect } from '@/middleware/auth';
 import { Swap, SwapComment, CommentLike, Content, FriendRequest, User } from '@/models';
@@ -110,11 +111,10 @@ router.post('/queue', uploadLimiter, optionalAuth, upload.single('image'), async
       const allContent: any[] = Array.from((contentPool as any).pool.values()).filter((c: any) => c.userId !== userId);
       
       if (allContent.length > 0) {
-        const randomIndex = Math.floor(Math.random() * allContent.length);
-        const alternativeContent = allContent[randomIndex] as any;
+        const alternativeContent = contentPool.prioritizeCandidates(allContent as any);
         if (alternativeContent && alternativeContent.id) {
           receivedContent = alternativeContent;
-          console.log('✓ Found alternative content:', alternativeContent.id);
+          console.log('✓ Found alternative content:', alternativeContent.id, 'prioritized for active users');
         }
       }
     }
@@ -644,6 +644,28 @@ router.post('/content/:contentId/comment', protect, async (req: any, res: any) =
 
     console.log('💬 Comment added:', { contentId, username, commentId: comment._id });
 
+    try {
+      const io = getIO();
+      const commentIdString = comment._id instanceof Types.ObjectId
+        ? comment._id.toString()
+        : String(comment._id);
+
+      io.to(`content:${contentId}`).emit('content:comment', {
+        _id: commentIdString,
+        contentId,
+        author: userId,
+        username,
+        text: comment.text,
+        createdAt: comment.createdAt,
+        likes: 0,
+        liked: false,
+        parentId: comment.parentId || null,
+        replies: [],
+      });
+    } catch (socketError) {
+      console.error('Failed to emit content comment event:', socketError);
+    }
+
     res.json({
       success: true,
       data: comment,
@@ -741,13 +763,24 @@ router.get('/content/:contentId/comments', async (req: any, res: any) => {
     const { contentId } = req.params;
 
     // Get all comments (including replies)
-    const allComments = await SwapComment.find({
+    const commentsRaw = await SwapComment.find({
       contentId,
       type: 'comment',
     })
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
+
+    const allComments = commentsRaw.map((comment: any) => ({
+      ...comment,
+      _id: comment._id.toString(),
+      author: comment.author?.toString(),
+      parentId: comment.parentId || null,
+      createdAt: (comment.createdAt instanceof Date
+        ? comment.createdAt
+        : new Date(comment.createdAt)
+      ).toISOString(),
+    }));
 
     // Separate top-level comments and replies
     const topLevelComments = allComments.filter(c => !c.parentId);
@@ -827,6 +860,28 @@ router.post('/content/:contentId/comment/:commentId/reply', protect, async (req:
 
     // Update content pool with reply count
     await contentPool.addComment(contentId);
+
+    try {
+      const io = getIO();
+      const replyIdString = reply._id instanceof Types.ObjectId
+        ? reply._id.toString()
+        : String(reply._id);
+
+      io.to(`content:${contentId}`).emit('content:comment', {
+        _id: replyIdString,
+        contentId,
+        author: req.user._id.toString(),
+        username: req.user.username,
+        text: reply.text,
+        createdAt: reply.createdAt,
+        likes: 0,
+        liked: false,
+        parentId: commentId,
+        replies: [],
+      });
+    } catch (socketError) {
+      console.error('Failed to emit reply comment event:', socketError);
+    }
 
     res.json({
       success: true,

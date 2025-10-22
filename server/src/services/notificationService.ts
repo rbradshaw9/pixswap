@@ -14,6 +14,12 @@ interface CreateNotificationData {
 
 export const createNotification = async (data: CreateNotificationData) => {
   try {
+    console.log('📬 Creating notification:', {
+      userId: data.userId,
+      type: data.type,
+      title: data.title,
+    });
+
     const notification = await Notification.create({
       userId: data.userId,
       type: data.type,
@@ -26,10 +32,15 @@ export const createNotification = async (data: CreateNotificationData) => {
       read: false,
     });
 
+    console.log('✅ Notification created:', notification._id);
+
     // Send real-time notification via Socket.IO
     const io = getIO();
     if (io) {
-      io.to(`user:${data.userId}`).emit('notification', {
+      const room = `user:${data.userId}`;
+      console.log('🔔 Emitting notification to room:', room);
+      
+      io.to(room).emit('notification', {
         id: notification._id,
         type: notification.type,
         title: notification.title,
@@ -41,6 +52,10 @@ export const createNotification = async (data: CreateNotificationData) => {
         read: notification.read,
         createdAt: notification.createdAt,
       });
+      
+      console.log('📡 Notification emitted to Socket.IO');
+    } else {
+      console.warn('⚠️ Socket.IO not initialized');
     }
 
     return notification;

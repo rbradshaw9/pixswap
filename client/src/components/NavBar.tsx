@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Upload, FolderOpen, Users, LogOut, Shield, Sparkles, Heart, Settings } from 'lucide-react';
+import { Home, Upload, FolderOpen, Users, LogOut, Shield, Sparkles, Heart, Settings, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import NotificationBell from './NotificationBell';
 import NSFWToggle from './NSFWToggle';
@@ -96,6 +96,13 @@ export default function NavBar({
                   <span>Liked</span>
                 </Link>
                 <Link
+                  to="/messages"
+                  className={`flex items-center gap-2 ${textClasses} transition-colors`}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Messages</span>
+                </Link>
+                <Link
                   to="/settings"
                   className={`flex items-center gap-2 ${textClasses} transition-colors`}
                 >
@@ -187,6 +194,13 @@ export default function NavBar({
             >
               <Heart className="w-4 h-4" />
               <span>Liked</span>
+            </Link>
+            <Link
+              to="/messages"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg ${buttonClasses} transition-all text-sm`}
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>Messages</span>
             </Link>
             <Link
               to="/settings"

@@ -55,14 +55,14 @@ router.patch('/profile', protect, async (req: any, res: any) => {
   }
 });
 
-// Get current user
-router.get('/me', protect, async (req: any, res: any) => {
+// Get user profile by username
+router.get('/profile/:username', optionalAuth, async (req: any, res: any) => {
   try {
     const { username } = req.params;
     const currentUserId = req.user?._id?.toString();
 
     // Find user by username
-    const user = await User.findOne({ username }).select('username createdAt');
+    const user = await User.findOne({ username }).select('username displayName bio avatar createdAt friends friendRequests');
     
     if (!user) {
       return res.status(404).json({
@@ -142,12 +142,40 @@ router.get('/me', protect, async (req: any, res: any) => {
     const totalViews = content.reduce((sum, c) => sum + c.views, 0);
     const totalLikes = content.reduce((sum, c) => sum + c.reactions, 0);
 
+    // Determine friendship status if user is authenticated
+    let friendshipStatus = null;
+    if (currentUserId && currentUserId !== user._id.toString()) {
+      const isFriend = user.friends?.includes(currentUserId);
+      
+      // Check for pending friend requests
+      const { FriendRequest } = await import('@/models');
+      const pendingRequest = await FriendRequest.findOne({
+        $or: [
+          { fromUser: currentUserId, toUser: user._id.toString(), status: 'pending' },
+          { fromUser: user._id.toString(), toUser: currentUserId, status: 'pending' }
+        ]
+      });
+
+      if (isFriend) {
+        friendshipStatus = 'friends';
+      } else if (pendingRequest) {
+        friendshipStatus = pendingRequest.fromUser.toString() === currentUserId ? 'requested' : 'pending';
+      } else {
+        friendshipStatus = 'none';
+      }
+    }
+
     const profileData = {
       username: user.username,
+      displayName: user.displayName,
+      bio: user.bio,
+      avatar: user.avatar,
       joinedAt: user.createdAt.toISOString(),
       totalUploads: content.length,
       totalViews,
       totalLikes,
+      friendsCount: user.friends?.length || 0,
+      friendshipStatus,
     };
 
     res.json({
@@ -162,6 +190,33 @@ router.get('/me', protect, async (req: any, res: any) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to fetch profile',
+    });
+  }
+});
+
+// Get current user
+router.get('/me', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error: any) {
+    console.error('Get me error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch user',
     });
   }
 });

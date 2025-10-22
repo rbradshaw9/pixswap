@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, SkipForward, UserPlus, ArrowLeft, Sparkles, Send, LogOut, Flag } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Copy, SkipForward, UserPlus, Sparkles, Send, Flag, Users } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
@@ -9,18 +9,32 @@ import { useNSFWMode } from '@/hooks/useNSFWMode';
 import toast from 'react-hot-toast';
 import ProtectedMedia from '@/components/ProtectedMedia';
 import BlurredNSFWContent from '@/components/BlurredNSFWContent';
+import { useSocket } from '@/hooks/useSocket';
 
 interface Comment {
   _id: string;
   username: string;
   text: string;
   createdAt: string;
+  likes?: number;
+  liked?: boolean;
+  replies?: Comment[];
+  replyCount?: number;
+  parentId?: string | null;
+}
+
+interface Viewer {
+  userId: string;
+  username: string;
+  isOnline: boolean;
+  isGuest: boolean;
 }
 
 export default function SwapViewPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const socket = useSocket();
   const [content, setContent] = useState<any>(null);
   const [contentUserId, setContentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,9 +45,8 @@ export default function SwapViewPage() {
   const [isNSFW, setIsNSFW] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [viewsCount, setViewsCount] = useState(0);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [viewers, setViewers] = useState<Viewer[]>([]);
   const { nsfwMode, handleNSFWModeChange } = useNSFWMode();
   // Reactions feature removed for v1
   // const [reactionsCount, setReactionsCount] = useState(0);
@@ -63,6 +76,76 @@ export default function SwapViewPage() {
       }
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!socket || !content?.id) {
+      return;
+    }
+
+    const contentId = content.id;
+    setViewers([]);
+
+    const normalizeComment = (incoming: any): Comment => ({
+      _id: incoming._id,
+      username: incoming.username,
+      text: incoming.text,
+      createdAt: incoming.createdAt ? new Date(incoming.createdAt).toISOString() : new Date().toISOString(),
+      likes: incoming.likes ?? 0,
+      liked: incoming.liked ?? false,
+      parentId: incoming.parentId ?? null,
+      replies: incoming.replies ?? [],
+      replyCount: incoming.replyCount ?? (incoming.replies ? incoming.replies.length : 0),
+    });
+
+    const handleIncomingComment = (incoming: any) => {
+      if (!incoming || incoming.contentId !== contentId) {
+        return;
+      }
+
+      const normalized = normalizeComment(incoming);
+
+      if (normalized.parentId) {
+        setComments((prev) => prev.map((comment) => {
+          if (comment._id !== normalized.parentId) {
+            return comment;
+          }
+
+          const existingReplies = comment.replies || [];
+          if (existingReplies.some((reply) => reply._id === normalized._id)) {
+            return comment;
+          }
+
+          return {
+            ...comment,
+            replies: [...existingReplies, normalized],
+            replyCount: (comment.replyCount || 0) + 1,
+          };
+        }));
+        return;
+      }
+
+      setComments((prev) => {
+        if (prev.some((existing) => existing._id === normalized._id)) {
+          return prev;
+        }
+        return [normalized, ...prev];
+      });
+    };
+
+    const handleViewersUpdate = (incoming: Viewer[]) => {
+      setViewers(incoming);
+    };
+
+    socket.emit('content:join', { contentId });
+    socket.on('content:comment', handleIncomingComment);
+    socket.on('content:viewers', handleViewersUpdate);
+
+    return () => {
+      socket.emit('content:leave', { contentId });
+      socket.off('content:comment', handleIncomingComment);
+      socket.off('content:viewers', handleViewersUpdate);
+    };
+  }, [socket, content?.id]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -121,11 +204,49 @@ export default function SwapViewPage() {
     }
   };
 
+  const getShareUrl = () => {
+    if (!content) {
+      return '';
+    }
+
+    try {
+      return `${window.location.origin}/view?content=${encodeURIComponent(JSON.stringify(content))}`;
+    } catch (error) {
+      console.error('Failed to build share URL:', error);
+      return '';
+    }
+  };
+
+  const handleCopyLink = async () => {
+    const shareUrl = getShareUrl();
+    if (!shareUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied to clipboard!');
+    } catch (error) {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'absolute';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('Link copied to clipboard!');
+      } catch (fallbackError) {
+        console.error('Copy link failed:', fallbackError);
+        toast.error('Failed to copy link');
+      }
+    }
+  };
+
   const handleShare = async () => {
-    if (!content) return;
-    
-    const shareUrl = `${window.location.origin}/view?content=${encodeURIComponent(JSON.stringify(content))}`;
-    
+    const shareUrl = getShareUrl();
+    if (!shareUrl) return;
+
     try {
       if (navigator.share) {
         await navigator.share({
@@ -138,16 +259,12 @@ export default function SwapViewPage() {
         toast.success('Link copied to clipboard!');
       }
     } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        console.error('Share failed:', err);
-        // Fallback: copy to clipboard
-        try {
-          await navigator.clipboard.writeText(shareUrl);
-          toast.success('Link copied to clipboard!');
-        } catch {
-          toast.error('Failed to share');
-        }
+      if (err?.name === 'AbortError') {
+        return;
       }
+
+      console.error('Share failed:', err);
+      await handleCopyLink();
     }
   };
 
@@ -233,6 +350,30 @@ export default function SwapViewPage() {
     setShowEmojiPicker(false);
   };
 
+  const handleStartPrivateChat = (viewer: Viewer) => {
+    if (!isAuthenticated) {
+      toast.error('Please login to start a private chat');
+      navigate('/login');
+      return;
+    }
+
+    if (!user) {
+      return;
+    }
+
+    if (viewer.userId === user._id) {
+      toast('You are already part of this conversation.');
+      return;
+    }
+
+    if (viewer.isGuest) {
+      toast.error('This user is browsing anonymously right now');
+      return;
+    }
+
+    navigate(`/messages/${viewer.username}`);
+  };
+
   const handleFriendRequest = async () => {
     if (!isAuthenticated) {
       toast.error('Please login to send friend requests');
@@ -287,6 +428,7 @@ export default function SwapViewPage() {
         setLiked(false);
         setComment('');
         setComments([]);
+  setViewers([]);
         setLikesCount(0);
         await fetchComments(newContent.id);
         // View tracking happens server-side
@@ -391,6 +533,14 @@ export default function SwapViewPage() {
                       <span className="font-medium hidden sm:inline">Share</span>
                     </button>
 
+                    <button
+                      onClick={handleCopyLink}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-gray-300 hover:bg-white/20 transition-all"
+                    >
+                      <Copy className="w-5 h-5" />
+                      <span className="font-medium hidden sm:inline">Copy Link</span>
+                    </button>
+
                     <button 
                       onClick={handleFlag}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 transition-all"
@@ -431,10 +581,51 @@ export default function SwapViewPage() {
           {/* Sidebar - Comments */}
           <div className="lg:col-span-1">
             <div className="bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 p-6 shadow-2xl">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <MessageCircle className="w-6 h-6" />
-                Comments ({comments.length})
-              </h3>
+              <div className="mb-6 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <MessageCircle className="w-6 h-6" />
+                    Comments ({comments.length})
+                  </h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <Users className="w-4 h-4" />
+                    <span>{viewers.length} viewing now</span>
+                  </div>
+                </div>
+
+                {viewers.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {viewers.map((viewer) => {
+                      const isMe = viewer.userId === user?._id;
+                      return (
+                        <div
+                          key={`${viewer.userId}`}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-black/30 border border-white/10 rounded-full"
+                        >
+                          <span
+                            className={`w-2.5 h-2.5 rounded-full ${viewer.isOnline ? 'bg-emerald-400' : 'bg-gray-500'}`}
+                          />
+                          <span className="text-xs text-white font-semibold">
+                            {isMe ? 'You' : viewer.username}
+                          </span>
+                          {viewer.isGuest && !isMe && (
+                            <span className="text-[10px] uppercase tracking-wide text-gray-400">Guest</span>
+                          )}
+                          {isAuthenticated && !isMe && !viewer.isGuest && (
+                            <button
+                              onClick={() => handleStartPrivateChat(viewer)}
+                              className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                              title={`Message ${viewer.username}`}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-gray-300" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {/* Comment Input */}
               <div className="space-y-3 mb-6">

@@ -5,8 +5,74 @@ import { IJwtPayload, ISocketUser } from '@/types';
 // Store active socket connections
 const activeUsers = new Map<string, ISocketUser>();
 const userSockets = new Map<string, string[]>(); // userId -> socketId[]
+const contentViewers = new Map<string, Map<string, { username: string; socketIds: Set<string> }>>();
+const socketContentRooms = new Map<string, Set<string>>();
 
 export const setupSocket = (io: SocketIOServer): void => {
+  const emitContentViewers = (contentId: string) => {
+    const viewers = contentViewers.get(contentId);
+    const payload = viewers
+      ? Array.from(viewers.entries()).map(([viewerId, entry]) => ({
+          userId: viewerId,
+          username: entry.username,
+          isOnline: isUserOnline(viewerId),
+          isGuest: viewerId.startsWith('temp-'),
+        }))
+      : [];
+
+    io.to(`content:${contentId}`).emit('content:viewers', payload);
+  };
+
+  const addContentViewer = (contentId: string, userId: string, username: string, socketId: string) => {
+    if (!contentId || !userId) {
+      return;
+    }
+
+    let viewers = contentViewers.get(contentId);
+    if (!viewers) {
+      viewers = new Map();
+      contentViewers.set(contentId, viewers);
+    }
+
+    let viewerEntry = viewers.get(userId);
+    if (!viewerEntry) {
+      viewerEntry = {
+        username,
+        socketIds: new Set<string>(),
+      };
+      viewers.set(userId, viewerEntry);
+    } else {
+      viewerEntry.username = username;
+    }
+
+    viewerEntry.socketIds.add(socketId);
+    emitContentViewers(contentId);
+  };
+
+  const removeContentViewer = (contentId: string, userId: string, socketId: string) => {
+    const viewers = contentViewers.get(contentId);
+    if (!viewers) {
+      return;
+    }
+
+    const viewerEntry = viewers.get(userId);
+    if (!viewerEntry) {
+      return;
+    }
+
+    viewerEntry.socketIds.delete(socketId);
+
+    if (viewerEntry.socketIds.size === 0) {
+      viewers.delete(userId);
+    }
+
+    if (viewers.size === 0) {
+      contentViewers.delete(contentId);
+    }
+
+    emitContentViewers(contentId);
+  };
+
   // Authentication middleware for Socket.IO (optional for now)
   io.use(async (socket: Socket, next) => {
     try {
@@ -56,6 +122,7 @@ export const setupSocket = (io: SocketIOServer): void => {
     };
 
     activeUsers.set(socket.id, socketUser);
+  socketContentRooms.set(socket.id, new Set());
     
     // Track multiple connections per user
     if (!userSockets.has(userId)) {
@@ -75,6 +142,44 @@ export const setupSocket = (io: SocketIOServer): void => {
       username,
       isOnline: true,
       lastSeen: new Date(),
+    });
+
+    // Handle joining content rooms for real-time comments/viewers
+    socket.on('content:join', (payload: { contentId: string } | string) => {
+      const contentId = typeof payload === 'string' ? payload : payload?.contentId;
+      if (!contentId) {
+        return;
+      }
+
+      const roomName = `content:${contentId}`;
+      socket.join(roomName);
+
+      const joinedRooms = socketContentRooms.get(socket.id) || new Set<string>();
+      joinedRooms.add(contentId);
+      socketContentRooms.set(socket.id, joinedRooms);
+
+      addContentViewer(contentId, userId, username, socket.id);
+    });
+
+    socket.on('content:leave', (payload: { contentId: string } | string) => {
+      const contentId = typeof payload === 'string' ? payload : payload?.contentId;
+      if (!contentId) {
+        return;
+      }
+
+      socket.leave(`content:${contentId}`);
+
+      const joinedRooms = socketContentRooms.get(socket.id);
+      if (joinedRooms) {
+        joinedRooms.delete(contentId);
+        if (joinedRooms.size === 0) {
+          socketContentRooms.delete(socket.id);
+        } else {
+          socketContentRooms.set(socket.id, joinedRooms);
+        }
+      }
+
+      removeContentViewer(contentId, userId, socket.id);
     });
 
     // Handle joining chat rooms
@@ -185,6 +290,14 @@ export const setupSocket = (io: SocketIOServer): void => {
       
       // Remove from active users
       activeUsers.delete(socket.id);
+
+      const joinedRooms = socketContentRooms.get(socket.id);
+      if (joinedRooms) {
+        joinedRooms.forEach((contentId) => {
+          removeContentViewer(contentId, userId, socket.id);
+        });
+        socketContentRooms.delete(socket.id);
+      }
       
       // Remove socket from user's socket list
       const userSocketList = userSockets.get(userId);

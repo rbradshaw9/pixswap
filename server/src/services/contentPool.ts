@@ -3,6 +3,7 @@
 
 import { Content } from '@/models/Content';
 import { UserContentView } from '@/models/UserContentView';
+import { isUserOnline } from '@/socket/socketHandler';
 
 interface ContentEntry {
   id: string;
@@ -28,6 +29,24 @@ class ContentPool {
 
   constructor() {
     // Don't load immediately - wait for database connection
+  }
+
+  private pickPrioritizedContent(items: ContentEntry[]): ContentEntry | null {
+    if (!items || items.length === 0) {
+      return null;
+    }
+
+    if (items.length === 1) {
+      return items[0] ?? null;
+    }
+
+    const onlineCandidates = items.filter((item) =>
+      item.userId !== 'seed-user' && isUserOnline(item.userId)
+    );
+
+    const pool = onlineCandidates.length > 0 ? onlineCandidates : items;
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    return pool[randomIndex] || null;
   }
 
   // Initialize after database connection
@@ -149,6 +168,10 @@ class ContentPool {
     return content;
   }
 
+  prioritizeCandidates(candidates: ContentEntry[]): ContentEntry | null {
+    return this.pickPrioritizedContent(candidates);
+  }
+
   // Get random content from pool (excluding user's own and already seen)
   // contentFilter: 'sfw' = SFW only, 'all' = both, 'nsfw' = NSFW only
   async getRandom(userId: string, isNSFW: boolean, contentFilter: 'sfw' | 'all' | 'nsfw' = 'sfw'): Promise<ContentEntry | null> {
@@ -256,8 +279,7 @@ class ContentPool {
       }
 
       // Pick random from reset list
-      const randomIndex = Math.floor(Math.random() * resetAvailable.length);
-      const selected = resetAvailable[randomIndex];
+  const selected = this.pickPrioritizedContent(resetAvailable);
 
       if (!selected) return null;
 
@@ -276,8 +298,7 @@ class ContentPool {
     }
 
     // Pick random from available
-    const randomIndex = Math.floor(Math.random() * available.length);
-    const selected = available[randomIndex];
+  const selected = this.pickPrioritizedContent(available);
 
     if (!selected) return null;
 

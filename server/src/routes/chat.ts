@@ -482,10 +482,10 @@ router.post('/rooms/:roomId/messages/existing', protect, async (req: any, res: a
     const currentUserObjectId = new Types.ObjectId(currentUserId);
     const { contentId, expiryMinutes } = req.body;
 
-    if (!contentId || !Types.ObjectId.isValid(contentId)) {
+    if (!contentId) {
       return res.status(400).json({
         success: false,
-        message: 'Valid contentId is required',
+        message: 'contentId is required',
       });
     }
 

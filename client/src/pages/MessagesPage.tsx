@@ -113,18 +113,12 @@ export default function MessagesPage() {
     try {
       setLoadingUploads(true);
       const response = await api.get<{ content: any[] }>(`/user/profile/${user.username}`);
-      console.log('Full profile response:', response);
       if (response.success && response.data?.content) {
-        console.log('Raw content:', response.data.content);
-        const uploads: UserUpload[] = response.data.content.map((item: any) => {
-          console.log('Mapping item:', item, 'ID:', item._id, 'id:', item.id);
-          return {
-            id: item._id || item.id,
-            mediaUrl: item.mediaUrl,
-            mediaType: item.mediaType
-          };
-        });
-        console.log('Loaded uploads:', uploads);
+        const uploads: UserUpload[] = response.data.content.map((item: any) => ({
+          id: item._id || item.id,
+          mediaUrl: item.mediaUrl,
+          mediaType: item.mediaType
+        }));
         setUserUploads(uploads);
       }
     } catch (error) {
@@ -870,9 +864,7 @@ export default function MessagesPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('Clicked upload:', upload.id, 'Current selection:', selectedUploadId);
                             const newSelection = selectedUploadId === upload.id ? null : upload.id;
-                            console.log('Setting selection to:', newSelection);
                             setSelectedUploadId(newSelection);
                           }}
                           className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${

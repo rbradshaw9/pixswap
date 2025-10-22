@@ -323,6 +323,29 @@ router.get('/liked-posts', protect, async (req: any, res: any) => {
   }
 });
 
+// Get pending friend requests
+router.get('/friend-requests', protect, async (req: any, res: any) => {
+  try {
+    const userId = req.user._id;
+
+    const requests = await FriendRequest.find({
+      toUser: userId,
+      status: 'pending',
+    }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: requests,
+    });
+  } catch (error: any) {
+    console.error('Get friend requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch friend requests',
+    });
+  }
+});
+
 // Get swap details
 router.get('/:id', async (req: any, res: any) => {
   try {
@@ -1096,29 +1119,6 @@ router.post('/friend-request/:requestId/reject', protect, async (req: any, res: 
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to reject friend request',
-    });
-  }
-});
-
-// Get pending friend requests
-router.get('/friend-requests', protect, async (req: any, res: any) => {
-  try {
-    const userId = req.user._id;
-
-    const requests = await FriendRequest.find({
-      toUser: userId,
-      status: 'pending',
-    }).sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      data: requests,
-    });
-  } catch (error: any) {
-    console.error('Get friend requests error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to fetch friend requests',
     });
   }
 });

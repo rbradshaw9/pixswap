@@ -71,9 +71,10 @@ router.post('/queue', uploadLimiter, optionalAuth, upload.single('image'), async
     });
 
     // Get user's content filter preference (if authenticated)
-    let contentFilter: 'sfw' | 'all' | 'nsfw' = 'sfw';
+    // Anonymous users see all content, authenticated users use their preference
+    let contentFilter: 'sfw' | 'all' | 'nsfw' = 'all';
     if (req.user) {
-      contentFilter = req.user.nsfwContentFilter || 'sfw';
+      contentFilter = req.user.nsfwContentFilter || 'all';
     }
 
     console.log('🎲 Getting random content with filter:', contentFilter);
@@ -477,9 +478,10 @@ router.post('/next', optionalAuth, upload.none(), async (req: any, res: any) => 
     const isNSFW = req.body.isNSFW === 'true';
 
     // Get user's content filter preference (if authenticated)
-    let contentFilter: 'sfw' | 'all' | 'nsfw' = 'sfw';
+    // Anonymous users see all content, authenticated users use their preference
+    let contentFilter: 'sfw' | 'all' | 'nsfw' = 'all';
     if (req.user) {
-      contentFilter = req.user.nsfwContentFilter || 'sfw';
+      contentFilter = req.user.nsfwContentFilter || 'all';
     }
 
     // Get another random content based on user's filter

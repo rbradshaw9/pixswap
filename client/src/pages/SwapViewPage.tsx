@@ -5,6 +5,7 @@ import NavBar from '@/components/NavBar';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useNSFWMode } from '@/hooks/useNSFWMode';
 import toast from 'react-hot-toast';
 import ProtectedMedia from '@/components/ProtectedMedia';
 import BlurredNSFWContent from '@/components/BlurredNSFWContent';
@@ -33,6 +34,7 @@ export default function SwapViewPage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const { nsfwMode, handleNSFWModeChange } = useNSFWMode();
   // Reactions feature removed for v1
   // const [reactionsCount, setReactionsCount] = useState(0);
 
@@ -315,7 +317,14 @@ export default function SwapViewPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900">
-      <NavBar variant="transparent" showBackButton backTo="/" backLabel="Upload Another" />
+      <NavBar 
+        variant="transparent" 
+        showBackButton 
+        backTo="/" 
+        backLabel="Upload Another"
+        nsfwMode={nsfwMode}
+        onNSFWChange={handleNSFWModeChange}
+      />
 
       {/* Content Area */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

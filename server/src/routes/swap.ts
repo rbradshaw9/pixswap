@@ -33,6 +33,7 @@ router.post('/queue', uploadLimiter, optionalAuth, upload.single('image'), async
     const userId = req.user?._id?.toString() || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const isNSFW = req.body.isNSFW === 'true';
     const caption = req.body.caption || '';
+    const requestedFilter = req.body.contentFilter; // Client can specify filter
     
     console.log('📤 Upload request:', {
       userId,
@@ -41,6 +42,7 @@ router.post('/queue', uploadLimiter, optionalAuth, upload.single('image'), async
       hasCaption: !!caption,
       captionLength: caption.length,
       fileType: req.file?.mimetype,
+      requestedFilter,
     });
     
     // Get media URL from Cloudinary or fallback to local path
@@ -70,10 +72,12 @@ router.post('/queue', uploadLimiter, optionalAuth, upload.single('image'), async
       cloudinaryId,
     });
 
-    // Get user's content filter preference (if authenticated)
-    // Anonymous users see all content, authenticated users use their preference
+    // Get user's content filter preference
+    // Priority: 1) Client-requested filter, 2) User's saved preference, 3) Default to 'all'
     let contentFilter: 'sfw' | 'all' | 'nsfw' = 'all';
-    if (req.user) {
+    if (requestedFilter && ['sfw', 'all', 'nsfw'].includes(requestedFilter)) {
+      contentFilter = requestedFilter;
+    } else if (req.user) {
       contentFilter = req.user.nsfwContentFilter || 'all';
     }
 

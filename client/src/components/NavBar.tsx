@@ -2,19 +2,24 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Home, Upload, FolderOpen, Users, LogOut, Shield, Sparkles, Heart, Settings } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import NotificationBell from './NotificationBell';
+import NSFWToggle from './NSFWToggle';
 
 interface NavBarProps {
   variant?: 'default' | 'transparent';
   showBackButton?: boolean;
   backTo?: string;
   backLabel?: string;
+  nsfwMode?: boolean;
+  onNSFWChange?: (value: boolean) => void;
 }
 
 export default function NavBar({ 
   variant = 'default', 
   showBackButton = false,
   backTo = '/',
-  backLabel = 'Back'
+  backLabel = 'Back',
+  nsfwMode = false,
+  onNSFWChange
 }: NavBarProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -111,7 +116,15 @@ export default function NavBar({
           </div>
 
           {/* Right side - User menu */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* NSFW Toggle - Available to everyone */}
+            {onNSFWChange && (
+              <NSFWToggle 
+                isNSFW={nsfwMode} 
+                onChange={onNSFWChange}
+              />
+            )}
+
             {isAuthenticated ? (
               <>
                 {/* Notification Bell */}

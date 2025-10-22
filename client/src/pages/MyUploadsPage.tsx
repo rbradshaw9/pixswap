@@ -5,6 +5,7 @@ import NavBar from '@/components/NavBar';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useNSFWMode } from '@/hooks/useNSFWMode';
 import BlurredNSFWContent from '@/components/BlurredNSFWContent';
 
 interface UploadedContent {
@@ -26,6 +27,7 @@ interface UploadedContent {
 export default function MyUploadsPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { nsfwMode, handleNSFWModeChange } = useNSFWMode();
   const [uploads, setUploads] = useState<UploadedContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +187,14 @@ export default function MyUploadsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900">
-      <NavBar variant="transparent" showBackButton backTo="/" backLabel="Back to Swap" />
+      <NavBar 
+        variant="transparent" 
+        showBackButton 
+        backTo="/" 
+        backLabel="Back to Swap"
+        nsfwMode={nsfwMode}
+        onNSFWChange={handleNSFWModeChange}
+      />
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

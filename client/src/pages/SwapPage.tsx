@@ -5,6 +5,7 @@ import NavBar from '@/components/NavBar';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useNSFWMode } from '@/hooks/useNSFWMode';
 import * as nsfwjs from 'nsfwjs';
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
@@ -18,6 +19,7 @@ export default function SwapPage() {
   const [fileType, setFileType] = useState<'image' | 'video'>('image');
   const [caption, setCaption] = useState('');
   const [isNSFW, setIsNSFW] = useState(false);
+  const { nsfwMode, handleNSFWModeChange } = useNSFWMode();
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [nsfwModel, setNsfwModel] = useState<any>(null);
@@ -336,6 +338,14 @@ export default function SwapPage() {
       return;
     }
 
+    // Auto-match NSFW mode to what user is uploading
+    // If uploading NSFW content, enable NSFW mode to see NSFW back
+    // If uploading SFW content, keep current NSFW mode preference
+    if (isNSFW && !nsfwMode) {
+      console.log('🔄 Auto-enabling NSFW mode to match uploaded content');
+      handleNSFWModeChange(true);
+    }
+
     setIsUploading(true);
     setError('');
     
@@ -345,6 +355,8 @@ export default function SwapPage() {
       const formData = new FormData();
       formData.append('image', selectedFile);
       formData.append('isNSFW', isNSFW.toString());
+      // Send content filter so user gets back content matching their preference
+      formData.append('contentFilter', nsfwMode ? 'all' : 'sfw');
       if (caption.trim()) {
         formData.append('caption', caption.trim());
       }
@@ -438,7 +450,11 @@ export default function SwapPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-900">
-      <NavBar variant="transparent" />
+      <NavBar 
+        variant="transparent" 
+        nsfwMode={nsfwMode}
+        onNSFWChange={handleNSFWModeChange}
+      />
 
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

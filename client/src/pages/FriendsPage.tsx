@@ -174,7 +174,8 @@ export default function FriendsPage() {
                 {friends.map((friend) => (
                   <div
                     key={friend._id}
-                    className="bg-white/10 backdrop-blur-2xl rounded-2xl border border-white/20 p-6 hover:bg-white/15 transition-all"
+                    className="bg-white/10 backdrop-blur-2xl rounded-2xl border border-white/20 p-6 hover:bg-white/15 transition-all cursor-pointer"
+                    onClick={() => navigate(`/profile/${friend.username}`)}
                   >
                     <div className="flex items-center gap-4">
                       <div className="relative">
@@ -195,8 +196,10 @@ export default function FriendsPage() {
                         size="sm"
                         variant="outline"
                         className="flex items-center gap-2"
-                        title="Chat with friend (coming soon)"
-                        disabled
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/messages/${friend.username}`);
+                        }}
                       >
                         <MessageCircle className="w-4 h-4" />
                       </Button>

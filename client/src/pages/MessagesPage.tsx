@@ -119,6 +119,7 @@ export default function MessagesPage() {
           mediaUrl: item.mediaUrl,
           mediaType: item.mediaType
         }));
+        console.log('Loaded uploads:', uploads);
         setUserUploads(uploads);
       }
     } catch (error) {
@@ -375,11 +376,13 @@ export default function MessagesPage() {
         }
 
         const axiosInstance = api.getInstance();
-        response = await axiosInstance.post(
+        const axiosResponse = await axiosInstance.post(
           `/chat/rooms/${selectedRoomId}/messages/media`,
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
         );
+        // Axios returns response.data, not response.data.data
+        response = axiosResponse.data;
       } else if (mediaMode === 'select' && selectedUploadId) {
         // Use existing upload
         response = await api.post(`/chat/rooms/${selectedRoomId}/messages/existing`, {
@@ -389,8 +392,8 @@ export default function MessagesPage() {
         });
       }
 
-      if (response?.data?.success && response.data.data) {
-        const message = response.data.data;
+      if (response?.success && response.data) {
+        const message = response.data;
         setMessages((prev) => {
           const alreadyExists = prev.some((existing) => existing._id === message._id);
           if (alreadyExists) return prev;
@@ -859,9 +862,14 @@ export default function MessagesPage() {
                       {userUploads.map((upload) => (
                         <button
                           key={upload.id}
-                          onClick={() => setSelectedUploadId(
-                            selectedUploadId === upload.id ? null : upload.id
-                          )}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Clicked upload:', upload.id, 'Current selection:', selectedUploadId);
+                            const newSelection = selectedUploadId === upload.id ? null : upload.id;
+                            console.log('Setting selection to:', newSelection);
+                            setSelectedUploadId(newSelection);
+                          }}
                           className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
                             selectedUploadId === upload.id
                               ? 'border-purple-500 scale-95'

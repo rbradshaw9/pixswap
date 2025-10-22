@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
 import { protect } from '@/middleware/auth';
-import { ChatRoom, Message, User } from '@/models';
+import { upload } from '@/middleware/upload';
+import { ChatRoom, Message, User, Content } from '@/models';
 import { ChatRoomType, MessageStatus, MessageType } from '@/types';
 import { getIO } from '@/socket';
 import { createNotification } from '@/services/notificationService';
@@ -337,6 +338,250 @@ router.post('/rooms/:roomId/messages', protect, async (req: any, res: any) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to send message',
+    });
+  }
+});
+
+// Send media message (upload new file)
+router.post('/rooms/:roomId/messages/media', protect, upload.single('file'), async (req: any, res: any) => {
+  try {
+    const { roomId } = req.params;
+    if (!Types.ObjectId.isValid(roomId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid roomId',
+      });
+    }
+
+    const currentUserId = req.user._id.toString();
+    const currentUserObjectId = new Types.ObjectId(currentUserId);
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded',
+      });
+    }
+
+    const room = await ChatRoom.findById(roomId).select('participants type');
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chat room not found',
+      });
+    }
+
+    const isParticipant = room.participants.some((participant) =>
+      participant.toString() === currentUserId
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not a participant in this chat room',
+      });
+    }
+
+    const { expiryMinutes } = req.body;
+    const mediaUrl = req.file.path;
+    const mediaType = req.file.mimetype.startsWith('image') ? MessageType.IMAGE : MessageType.VIDEO;
+
+    let expiresAt: Date | undefined;
+    if (expiryMinutes !== undefined && expiryMinutes !== null && expiryMinutes !== '') {
+      const minutes = parseInt(expiryMinutes, 10);
+      if (minutes === 0) {
+        // "After seen" - we'll set this when the message is read
+        expiresAt = undefined;
+      } else if (minutes > 0) {
+        expiresAt = new Date(Date.now() + minutes * 60 * 1000);
+      }
+    }
+
+    const message = await Message.create({
+      sender: currentUserObjectId,
+      chatRoom: roomId,
+      type: mediaType,
+      content: req.body.content || '',
+      mediaUrl,
+      expiresAt,
+      status: MessageStatus.SENT,
+    });
+
+    await ChatRoom.findByIdAndUpdate(roomId, {
+      lastMessage: message._id,
+      lastActivity: new Date(),
+    });
+
+    const populatedMessage = await Message.findById(message._id)
+      .populate('sender', 'username displayName avatar')
+      .lean();
+
+    const formattedMessage = formatMessage(populatedMessage);
+
+    const io = getIO();
+    io.to(roomId).emit('chat:message:new', {
+      roomId,
+      message: formattedMessage,
+    });
+
+    const otherParticipants = room.participants
+      .map((participant: any) => participant.toString())
+      .filter((participantId: string) => participantId !== currentUserId);
+
+    await Promise.all(
+      otherParticipants.map((participantId: string) =>
+        createNotification({
+          userId: participantId,
+          type: 'system',
+          title: 'New Message',
+          message: `${req.user.username} sent you media`,
+          actionUrl: `/messages/${req.user.username}`,
+          fromUser: currentUserId,
+          fromUsername: req.user.username,
+        }).catch((notificationError) =>
+          console.error('Failed to create message notification:', notificationError)
+        )
+      )
+    );
+
+    res.json({
+      success: true,
+      data: formattedMessage,
+    });
+  } catch (error: any) {
+    console.error('Send media message error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to send media message',
+    });
+  }
+});
+
+// Send existing content as message
+router.post('/rooms/:roomId/messages/existing', protect, async (req: any, res: any) => {
+  try {
+    const { roomId } = req.params;
+    if (!Types.ObjectId.isValid(roomId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid roomId',
+      });
+    }
+
+    const currentUserId = req.user._id.toString();
+    const currentUserObjectId = new Types.ObjectId(currentUserId);
+    const { contentId, expiryMinutes } = req.body;
+
+    if (!contentId || !Types.ObjectId.isValid(contentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid contentId is required',
+      });
+    }
+
+    const room = await ChatRoom.findById(roomId).select('participants type');
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chat room not found',
+      });
+    }
+
+    const isParticipant = room.participants.some((participant) =>
+      participant.toString() === currentUserId
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not a participant in this chat room',
+      });
+    }
+
+    const content = await Content.findById(contentId);
+    if (!content) {
+      return res.status(404).json({
+        success: false,
+        message: 'Content not found',
+      });
+    }
+
+    if (content.userId !== currentUserId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only share your own content',
+      });
+    }
+
+    const mediaType = content.mediaType === 'image' ? MessageType.IMAGE : MessageType.VIDEO;
+
+    let expiresAt: Date | undefined;
+    if (expiryMinutes !== undefined && expiryMinutes !== null && expiryMinutes !== '') {
+      const minutes = parseInt(expiryMinutes, 10);
+      if (minutes === 0) {
+        // "After seen" - we'll set this when the message is read
+        expiresAt = undefined;
+      } else if (minutes > 0) {
+        expiresAt = new Date(Date.now() + minutes * 60 * 1000);
+      }
+    }
+
+    const message = await Message.create({
+      sender: currentUserObjectId,
+      chatRoom: roomId,
+      type: mediaType,
+      content: req.body.content || '',
+      mediaUrl: content.mediaUrl,
+      expiresAt,
+      status: MessageStatus.SENT,
+    });
+
+    await ChatRoom.findByIdAndUpdate(roomId, {
+      lastMessage: message._id,
+      lastActivity: new Date(),
+    });
+
+    const populatedMessage = await Message.findById(message._id)
+      .populate('sender', 'username displayName avatar')
+      .lean();
+
+    const formattedMessage = formatMessage(populatedMessage);
+
+    const io = getIO();
+    io.to(roomId).emit('chat:message:new', {
+      roomId,
+      message: formattedMessage,
+    });
+
+    const otherParticipants = room.participants
+      .map((participant: any) => participant.toString())
+      .filter((participantId: string) => participantId !== currentUserId);
+
+    await Promise.all(
+      otherParticipants.map((participantId: string) =>
+        createNotification({
+          userId: participantId,
+          type: 'system',
+          title: 'New Message',
+          message: `${req.user.username} sent you media`,
+          actionUrl: `/messages/${req.user.username}`,
+          fromUser: currentUserId,
+          fromUsername: req.user.username,
+        }).catch((notificationError) =>
+          console.error('Failed to create message notification:', notificationError)
+        )
+      )
+    );
+
+    res.json({
+      success: true,
+      data: formattedMessage,
+    });
+  } catch (error: any) {
+    console.error('Send existing content message error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to send media message',
     });
   }
 });

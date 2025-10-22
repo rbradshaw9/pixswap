@@ -49,7 +49,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { limit: 20 },
       });
@@ -69,7 +69,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       if (!token) return;
 
       await axios.patch(
-        `${import.meta.env.VITE_API_URL}/api/notifications/${id}/read`,
+        `${import.meta.env.VITE_API_URL}/notifications/${id}/read`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -89,7 +89,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       if (!token) return;
 
       await axios.patch(
-        `${import.meta.env.VITE_API_URL}/api/notifications/mark-all-read`,
+        `${import.meta.env.VITE_API_URL}/notifications/mark-all-read`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
